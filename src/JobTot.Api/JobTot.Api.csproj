@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <UserSecretsId>jobtot-api</UserSecretsId>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.9" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.9" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.9" PrivateAssets="all" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="9.0.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\JobTot.Application\JobTot.Application.csproj" />
+    <ProjectReference Include="..\JobTot.Infrastructure\JobTot.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
+

@@ -1,0 +1,65 @@
+@baseUrl = http://localhost:5049
+@companyId = REPLACE_WITH_COMPANY_ID
+@jobId = REPLACE_WITH_JOB_ID
+
+### Health
+GET {{baseUrl}}/health
+
+### OpenAPI (Development)
+GET {{baseUrl}}/openapi/v1.json
+
+### Create company: copy response id into companyId
+POST {{baseUrl}}/api/companies
+Content-Type: application/json
+
+{
+  "name": "JobTot Technology",
+  "description": "Software company"
+}
+
+### Companies
+GET {{baseUrl}}/api/companies?page=1&pageSize=20
+
+### Create job: copy response id into jobId; choose a future expiresAt
+POST {{baseUrl}}/api/jobs
+Content-Type: application/json
+
+{
+  "companyId": "{{companyId}}",
+  "job": {
+    "title": "ASP.NET Core Developer",
+    "description": "Build recruitment APIs with C#, EF Core and SQL Server.",
+    "location": "Hanoi",
+    "salaryMin": 20000000,
+    "salaryMax": 40000000,
+    "expiresAt": "2030-12-31T23:59:59+07:00"
+  }
+}
+
+### Search open jobs
+GET {{baseUrl}}/api/jobs?keyword=Developer&location=Hanoi&page=1&pageSize=20
+
+### Job details
+GET {{baseUrl}}/api/jobs/{{jobId}}
+
+### Update job
+PUT {{baseUrl}}/api/jobs/{{jobId}}
+Content-Type: application/json
+
+{
+  "title": "Senior ASP.NET Core Developer",
+  "description": "Build and maintain recruitment APIs.",
+  "location": "Hanoi",
+  "salaryMin": 30000000,
+  "salaryMax": 50000000,
+  "expiresAt": "2030-12-31T23:59:59+07:00"
+}
+
+### Close job
+POST {{baseUrl}}/api/jobs/{{jobId}}/close
+
+### Include closed and expired jobs
+GET {{baseUrl}}/api/jobs?includeClosed=true
+
+### Invalid pagination: expect 400
+GET {{baseUrl}}/api/jobs?page=0&pageSize=101

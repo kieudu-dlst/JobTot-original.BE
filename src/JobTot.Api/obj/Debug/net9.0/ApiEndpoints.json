@@ -1,0 +1,2769 @@
+[
+  {
+    "ContainingType": "JobTot.Api.Controllers.AccountEmailController",
+    "Method": "Change",
+    "RelativePath": "api/{role}/auth/email/change-temporary-password",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "role",
+        "Type": "System.String",
+        "IsRequired": true
+      },
+      {
+        "Name": "input",
+        "Type": "JobTot.Api.Controllers.AccountEmailController\u002BChangeInput",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AccountEmailController",
+    "Method": "RequestCode",
+    "RelativePath": "api/{role}/auth/email/request",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "role",
+        "Type": "System.String",
+        "IsRequired": true
+      },
+      {
+        "Name": "input",
+        "Type": "JobTot.Api.Controllers.AccountEmailController\u002BEmailInput",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AccountEmailController",
+    "Method": "Verify",
+    "RelativePath": "api/{role}/auth/email/verify",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "role",
+        "Type": "System.String",
+        "IsRequired": true
+      },
+      {
+        "Name": "input",
+        "Type": "JobTot.Api.Controllers.AccountEmailController\u002BVerifyInput",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AdminCvTemplatesController",
+    "Method": "Login",
+    "RelativePath": "api/admin/auth/login",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "input",
+        "Type": "JobTot.Application.Authentication.CandidateLoginRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AdminCvTemplatesController",
+    "Method": "Logout",
+    "RelativePath": "api/admin/auth/logout",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AdminManagementController",
+    "Method": "Me",
+    "RelativePath": "api/admin/auth/me",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CareerArticlesController",
+    "Method": "List",
+    "RelativePath": "api/admin/career-articles",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CareerArticlesController",
+    "Method": "Create",
+    "RelativePath": "api/admin/career-articles",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "input",
+        "Type": "JobTot.Api.Controllers.CareerArticlesController\u002BArticleInput",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CareerArticlesController",
+    "Method": "Update",
+    "RelativePath": "api/admin/career-articles/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "input",
+        "Type": "JobTot.Api.Controllers.CareerArticlesController\u002BArticleInput",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CareerArticlesController",
+    "Method": "UploadCover",
+    "RelativePath": "api/admin/career-articles/{id}/cover",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "ContentType",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "ContentDisposition",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "Headers",
+        "Type": "Microsoft.AspNetCore.Http.IHeaderDictionary",
+        "IsRequired": false
+      },
+      {
+        "Name": "Length",
+        "Type": "System.Int64",
+        "IsRequired": false
+      },
+      {
+        "Name": "Name",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "FileName",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "version",
+        "Type": "System.Guid",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AdminManagementController",
+    "Method": "Companies",
+    "RelativePath": "api/admin/companies",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "Page",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "Size",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "Keyword",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "Status",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "JobTot.Application.Administration.AdminPage\u00601[[JobTot.Application.Administration.AdminCompanyRow, JobTot.Application, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AdminManagementController",
+    "Method": "CompanyStatus",
+    "RelativePath": "api/admin/companies/{id}/status",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "input",
+        "Type": "JobTot.Application.Administration.AdminStatusInput",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AdminManagementController",
+    "Method": "VerifyCompany",
+    "RelativePath": "api/admin/companies/{id}/verification",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "input",
+        "Type": "JobTot.Application.Administration.AdminVerificationInput",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AdminCvTemplatesController",
+    "Method": "List",
+    "RelativePath": "api/admin/cv-templates",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AdminCvTemplatesController",
+    "Method": "Create",
+    "RelativePath": "api/admin/cv-templates",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "input",
+        "Type": "JobTot.Application.Cvs.CvTemplateWrite",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AdminCvTemplatesController",
+    "Method": "Get",
+    "RelativePath": "api/admin/cv-templates/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AdminCvTemplatesController",
+    "Method": "Update",
+    "RelativePath": "api/admin/cv-templates/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "input",
+        "Type": "JobTot.Application.Cvs.CvTemplateWrite",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AdminManagementController",
+    "Method": "Industries",
+    "RelativePath": "api/admin/industries",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "Page",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "Size",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "Keyword",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "Status",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "JobTot.Application.Administration.AdminPage\u00601[[JobTot.Application.Administration.AdminIndustryRow, JobTot.Application, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AdminManagementController",
+    "Method": "CreateIndustry",
+    "RelativePath": "api/admin/industries",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "input",
+        "Type": "JobTot.Application.Administration.AdminIndustryInput",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AdminManagementController",
+    "Method": "UpdateIndustry",
+    "RelativePath": "api/admin/industries/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "input",
+        "Type": "JobTot.Application.Administration.AdminIndustryInput",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AdminManagementController",
+    "Method": "IndustryStatus",
+    "RelativePath": "api/admin/industries/{id}/status",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "input",
+        "Type": "JobTot.Application.Administration.AdminStatusInput",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AdminManagementController",
+    "Method": "Users",
+    "RelativePath": "api/admin/users",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "Page",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "Size",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "Keyword",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "Status",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "JobTot.Application.Administration.AdminPage\u00601[[JobTot.Application.Administration.AdminUserRow, JobTot.Application, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AdminManagementController",
+    "Method": "Password",
+    "RelativePath": "api/admin/users/{id}/password",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "input",
+        "Type": "JobTot.Application.Administration.AdminPasswordInput",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AdminManagementController",
+    "Method": "UserStatus",
+    "RelativePath": "api/admin/users/{id}/status",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "input",
+        "Type": "JobTot.Application.Administration.AdminStatusInput",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CandidateAuthController",
+    "Method": "ForgotPassword",
+    "RelativePath": "api/candidate/auth/forgot-password",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "JobTot.Application.Authentication.ForgotPasswordRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CandidateAuthController",
+    "Method": "Login",
+    "RelativePath": "api/candidate/auth/login",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "JobTot.Application.Authentication.CandidateLoginRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "JobTot.Application.Authentication.CandidateSessionDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CandidateAuthController",
+    "Method": "Logout",
+    "RelativePath": "api/candidate/auth/logout",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "JobTot.Application.Authentication.CandidateRefreshRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CandidateAuthController",
+    "Method": "Me",
+    "RelativePath": "api/candidate/auth/me",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "JobTot.Application.Authentication.CandidateAccountDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CandidateAuthController",
+    "Method": "Refresh",
+    "RelativePath": "api/candidate/auth/refresh",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "JobTot.Application.Authentication.CandidateRefreshRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "JobTot.Application.Authentication.CandidateSessionDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CandidateAuthController",
+    "Method": "Register",
+    "RelativePath": "api/candidate/auth/register",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "JobTot.Application.Authentication.CandidateRegisterRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "JobTot.Application.Authentication.CandidateSessionDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 201
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CandidateAuthController",
+    "Method": "ResetPassword",
+    "RelativePath": "api/candidate/auth/reset-password",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "JobTot.Application.Authentication.ResetPasswordRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.FollowedCompaniesController",
+    "Method": "List",
+    "RelativePath": "api/candidate/followed-companies",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IReadOnlyList\u00601[[System.Guid, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.FollowedCompaniesController",
+    "Method": "Follow",
+    "RelativePath": "api/candidate/followed-companies/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.FollowedCompaniesController",
+    "Method": "Unfollow",
+    "RelativePath": "api/candidate/followed-companies/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AccountHeaderController",
+    "Method": "Get",
+    "RelativePath": "api/candidate/header",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AccountHeaderController",
+    "Method": "MarkRead",
+    "RelativePath": "api/candidate/header/read",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "input",
+        "Type": "JobTot.Api.Controllers.AccountHeaderController\u002BReadInput",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CandidateJobsController",
+    "Method": "ConfirmInterview",
+    "RelativePath": "api/candidate/interviews/{id}/confirm",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CandidateJobApplicationsController",
+    "Method": "Get",
+    "RelativePath": "api/candidate/jobs/{id}/application",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "JobTot.Application.JobSubmissionDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CandidateJobApplicationsController",
+    "Method": "Submit",
+    "RelativePath": "api/candidate/jobs/{id}/application",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "input",
+        "Type": "JobTot.Application.SubmitJobApplicationRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "JobTot.Application.JobSubmissionDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AccountMessagesController",
+    "Method": "List",
+    "RelativePath": "api/candidate/messages",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AccountMessagesController",
+    "Method": "Start",
+    "RelativePath": "api/candidate/messages",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "input",
+        "Type": "JobTot.Api.Controllers.AccountMessagesController\u002BStartInput",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AccountMessagesController",
+    "Method": "Messages",
+    "RelativePath": "api/candidate/messages/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "before",
+        "Type": "System.Nullable\u00601[[System.Int64, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "after",
+        "Type": "System.Nullable\u00601[[System.Int64, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AccountMessagesController",
+    "Method": "Send",
+    "RelativePath": "api/candidate/messages/{id}",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "input",
+        "Type": "JobTot.Api.Controllers.AccountMessagesController\u002BSendInput",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AccountMessagesController",
+    "Method": "MarkRead",
+    "RelativePath": "api/candidate/messages/{id}/read",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "input",
+        "Type": "JobTot.Api.Controllers.AccountMessagesController\u002BMessageReadInput",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AccountMessagesController",
+    "Method": "Typing",
+    "RelativePath": "api/candidate/messages/{id}/typing",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AccountMessagesController",
+    "Method": "UpdateTyping",
+    "RelativePath": "api/candidate/messages/{id}/typing",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "input",
+        "Type": "JobTot.Api.Controllers.AccountMessagesController\u002BTypingInput",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AccountMessagesController",
+    "Method": "People",
+    "RelativePath": "api/candidate/messages/people",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "q",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CandidateJobsController",
+    "Method": "Dashboard",
+    "RelativePath": "api/candidate/my-jobs",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "Tab",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "Page",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "PageSize",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "CalendarMonth",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "InterviewDate",
+        "Type": "System.Nullable\u00601[[System.DateOnly, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "TimeZoneOffsetMinutes",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "JobTot.Application.Profiles.CandidateJobsDashboard",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CandidateJobsController",
+    "Method": "Availability",
+    "RelativePath": "api/candidate/my-jobs/availability",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "JobTot.Application.Profiles.CandidateAvailabilityRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CandidateJobsController",
+    "Method": "ReadyStatus",
+    "RelativePath": "api/candidate/my-jobs/status",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "JobTot.Application.Profiles.CandidateReadyStatusRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.OnlineCvsController",
+    "Method": "List",
+    "RelativePath": "api/candidate/online-cvs",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.OnlineCvsController",
+    "Method": "Get",
+    "RelativePath": "api/candidate/online-cvs/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.OnlineCvsController",
+    "Method": "Save",
+    "RelativePath": "api/candidate/online-cvs/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "input",
+        "Type": "JobTot.Application.Cvs.CvWrite",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.OnlineCvsController",
+    "Method": "Delete",
+    "RelativePath": "api/candidate/online-cvs/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "version",
+        "Type": "System.Guid",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.OnlineCvsController",
+    "Method": "Create",
+    "RelativePath": "api/candidate/online-cvs/from-template/{templateId}",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "templateId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CandidateProfileController",
+    "Method": "Get",
+    "RelativePath": "api/candidate/profile",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "JobTot.Application.Profiles.CandidateProfileResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CandidateProfileController",
+    "Method": "Put",
+    "RelativePath": "api/candidate/profile",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "document",
+        "Type": "JobTot.Application.Profiles.CandidateProfileDocument",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "JobTot.Application.Profiles.CandidateProfileResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CandidateProfileController",
+    "Method": "Avatar",
+    "RelativePath": "api/candidate/profile/avatar",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "file",
+        "Type": "Microsoft.AspNetCore.Http.IFormFile",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "JobTot.Application.Profiles.CandidateProfileResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CandidateProfileController",
+    "Method": "RemoveAvatar",
+    "RelativePath": "api/candidate/profile/avatar",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "JobTot.Application.Profiles.CandidateProfileResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CandidateProfileController",
+    "Method": "Upload",
+    "RelativePath": "api/candidate/profile/cvs",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "file",
+        "Type": "Microsoft.AspNetCore.Http.IFormFile",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "JobTot.Application.Profiles.ProfileCv",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CandidateProfileController",
+    "Method": "Download",
+    "RelativePath": "api/candidate/profile/cvs/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CandidateProfileController",
+    "Method": "SetDefault",
+    "RelativePath": "api/candidate/profile/cvs/{id}/default",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "input",
+        "Type": "JobTot.Api.Controllers.CandidateProfileController\u002BCvDefaultInput",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CandidateJobsController",
+    "Method": "Saved",
+    "RelativePath": "api/candidate/saved-jobs",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IReadOnlyList\u00601[[System.Guid, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CandidateJobsController",
+    "Method": "Save",
+    "RelativePath": "api/candidate/saved-jobs/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CandidateJobsController",
+    "Method": "Unsave",
+    "RelativePath": "api/candidate/saved-jobs/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CareerArticlesController",
+    "Method": "Published",
+    "RelativePath": "api/career-articles",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CareerArticlesController",
+    "Method": "Read",
+    "RelativePath": "api/career-articles/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CompaniesController",
+    "Method": "List",
+    "RelativePath": "api/companies",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "CompanyId",
+        "Type": "System.Nullable\u00601[[System.Guid, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "Keyword",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "ProvinceId",
+        "Type": "System.Nullable\u00601[[System.Guid, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "IndustryId",
+        "Type": "System.Nullable\u00601[[System.Guid, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "CompanySizeMin",
+        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "CompanySizeMax",
+        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "VerifiedOnly",
+        "Type": "System.Boolean",
+        "IsRequired": false
+      },
+      {
+        "Name": "HiringOnly",
+        "Type": "System.Boolean",
+        "IsRequired": false
+      },
+      {
+        "Name": "Sort",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "Page",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "PageSize",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "JobTot.Application.PageResult\u00601[[JobTot.Application.Companies.CompanyListingDto, JobTot.Application, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CompaniesController",
+    "Method": "Create",
+    "RelativePath": "api/companies",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "JobTot.Application.CreateCompanyRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "JobTot.Application.CompanyDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CompaniesController",
+    "Method": "Get",
+    "RelativePath": "api/companies/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "JobTot.Application.CompanyDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CompaniesController",
+    "Method": "Featured",
+    "RelativePath": "api/companies/featured",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IReadOnlyList\u00601[[JobTot.Application.Companies.CompanyListingDto, JobTot.Application, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CompaniesController",
+    "Method": "Filters",
+    "RelativePath": "api/companies/filters",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "JobTot.Application.Companies.CompanyDirectoryMetadata",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CompanyMapController",
+    "Method": "ResolvePublic",
+    "RelativePath": "api/companies/map",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "url",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CvTemplatesController",
+    "Method": "List",
+    "RelativePath": "api/cv-templates",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CvTemplatesController",
+    "Method": "Get",
+    "RelativePath": "api/cv-templates/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.DemoDataController",
+    "Method": "Get",
+    "RelativePath": "api/demo-data/{key}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "key",
+        "Type": "System.String",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerAuthController",
+    "Method": "ForgotPassword",
+    "RelativePath": "api/employer/auth/forgot-password",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "JobTot.Application.Authentication.ForgotPasswordRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerAuthController",
+    "Method": "Login",
+    "RelativePath": "api/employer/auth/login",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "JobTot.Application.Authentication.EmployerLoginRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 401
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerAuthController",
+    "Method": "Logout",
+    "RelativePath": "api/employer/auth/logout",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "JobTot.Application.Authentication.CandidateRefreshRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerAuthController",
+    "Method": "Me",
+    "RelativePath": "api/employer/auth/me",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "JobTot.Application.Authentication.EmployerAccountDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerAuthController",
+    "Method": "Provinces",
+    "RelativePath": "api/employer/auth/provinces",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerAuthController",
+    "Method": "Refresh",
+    "RelativePath": "api/employer/auth/refresh",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "JobTot.Application.Authentication.CandidateRefreshRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "JobTot.Application.Authentication.EmployerSessionDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerAuthController",
+    "Method": "Register",
+    "RelativePath": "api/employer/auth/register",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "JobTot.Application.Authentication.EmployerRegisterRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "JobTot.Application.Authentication.EmployerSessionDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 201
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerAuthController",
+    "Method": "ResetPassword",
+    "RelativePath": "api/employer/auth/reset-password",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "JobTot.Application.Authentication.ResetPasswordRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerCampaignsController",
+    "Method": "List",
+    "RelativePath": "api/employer/campaigns",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "keyword",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "state",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "page",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerCampaignsController",
+    "Method": "Create",
+    "RelativePath": "api/employer/campaigns",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "JobTot.Application.Companies.EmployerCampaignRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerCampaignsController",
+    "Method": "Get",
+    "RelativePath": "api/employer/campaigns/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerCampaignsController",
+    "Method": "Update",
+    "RelativePath": "api/employer/campaigns/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "JobTot.Application.Companies.EmployerCampaignRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerCampaignsController",
+    "Method": "Metadata",
+    "RelativePath": "api/employer/campaigns/metadata",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerCandidatesController",
+    "Method": "List",
+    "RelativePath": "api/employer/candidates",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "campaignId",
+        "Type": "System.Nullable\u00601[[System.Guid, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "stageId",
+        "Type": "System.Nullable\u00601[[System.Guid, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "keyword",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "state",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "source",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "sort",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "page",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerCandidatesController",
+    "Method": "Cv",
+    "RelativePath": "api/employer/candidates/{id}/cv",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerCandidatesController",
+    "Method": "ApplicationStatus",
+    "RelativePath": "api/employer/candidates/{id}/status",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "input",
+        "Type": "JobTot.Api.Controllers.EmployerCandidatesController\u002BStatusRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerCandidatesController",
+    "Method": "Import",
+    "RelativePath": "api/employer/candidates/import",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerCandidatesController",
+    "Method": "Calendar",
+    "RelativePath": "api/employer/candidates/interviews",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "from",
+        "Type": "System.DateOnly",
+        "IsRequired": false
+      },
+      {
+        "Name": "to",
+        "Type": "System.DateOnly",
+        "IsRequired": false
+      },
+      {
+        "Name": "keyword",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerCandidatesController",
+    "Method": "Schedule",
+    "RelativePath": "api/employer/candidates/interviews",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "input",
+        "Type": "JobTot.Api.Controllers.EmployerCandidatesController\u002BScheduleRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerCandidatesController",
+    "Method": "Cancel",
+    "RelativePath": "api/employer/candidates/interviews/{id}/cancel",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerCandidatesController",
+    "Method": "Feedback",
+    "RelativePath": "api/employer/candidates/interviews/{id}/feedback",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "input",
+        "Type": "JobTot.Api.Controllers.EmployerCandidatesController\u002BFeedbackRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerCandidatesController",
+    "Method": "Metadata",
+    "RelativePath": "api/employer/candidates/metadata",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerCandidatesController",
+    "Method": "Move",
+    "RelativePath": "api/employer/candidates/move",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "input",
+        "Type": "JobTot.Api.Controllers.EmployerCandidatesController\u002BMoveRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerCandidatesController",
+    "Method": "TalentList",
+    "RelativePath": "api/employer/candidates/talents",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "keyword",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "readiness",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "page",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerCandidatesController",
+    "Method": "AddTalent",
+    "RelativePath": "api/employer/candidates/talents",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "input",
+        "Type": "JobTot.Api.Controllers.EmployerCandidatesController\u002BAddTalentRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerCandidatesController",
+    "Method": "UpdateTalent",
+    "RelativePath": "api/employer/candidates/talents/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "input",
+        "Type": "JobTot.Api.Controllers.EmployerCandidatesController\u002BTalentUpdate",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerCandidatesController",
+    "Method": "Assign",
+    "RelativePath": "api/employer/candidates/talents/{id}/assign",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "input",
+        "Type": "JobTot.Api.Controllers.EmployerCandidatesController\u002BAssignRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerCompanyController",
+    "Method": "Get",
+    "RelativePath": "api/employer/company",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "JobTot.Application.Companies.EmployerCompanyResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerCompanyController",
+    "Method": "Save",
+    "RelativePath": "api/employer/company",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "document",
+        "Type": "JobTot.Application.Companies.EmployerCompanyDocument",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "JobTot.Application.Companies.EmployerCompanyResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerCompanyController",
+    "Method": "UploadImage",
+    "RelativePath": "api/employer/company/images/{kind}",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "kind",
+        "Type": "System.String",
+        "IsRequired": true
+      },
+      {
+        "Name": "file",
+        "Type": "Microsoft.AspNetCore.Http.IFormFile",
+        "IsRequired": false
+      },
+      {
+        "Name": "revision",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "JobTot.Application.Companies.EmployerCompanyResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerCompanyController",
+    "Method": "Industries",
+    "RelativePath": "api/employer/company/industries",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.CompanyMapController",
+    "Method": "Resolve",
+    "RelativePath": "api/employer/company/map",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "url",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AccountHeaderController",
+    "Method": "Get",
+    "RelativePath": "api/employer/header",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AccountHeaderController",
+    "Method": "MarkRead",
+    "RelativePath": "api/employer/header/read",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "input",
+        "Type": "JobTot.Api.Controllers.AccountHeaderController\u002BReadInput",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AccountMessagesController",
+    "Method": "List",
+    "RelativePath": "api/employer/messages",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AccountMessagesController",
+    "Method": "Start",
+    "RelativePath": "api/employer/messages",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "input",
+        "Type": "JobTot.Api.Controllers.AccountMessagesController\u002BStartInput",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AccountMessagesController",
+    "Method": "Messages",
+    "RelativePath": "api/employer/messages/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "before",
+        "Type": "System.Nullable\u00601[[System.Int64, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "after",
+        "Type": "System.Nullable\u00601[[System.Int64, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AccountMessagesController",
+    "Method": "Send",
+    "RelativePath": "api/employer/messages/{id}",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "input",
+        "Type": "JobTot.Api.Controllers.AccountMessagesController\u002BSendInput",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AccountMessagesController",
+    "Method": "MarkRead",
+    "RelativePath": "api/employer/messages/{id}/read",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "input",
+        "Type": "JobTot.Api.Controllers.AccountMessagesController\u002BMessageReadInput",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AccountMessagesController",
+    "Method": "Typing",
+    "RelativePath": "api/employer/messages/{id}/typing",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AccountMessagesController",
+    "Method": "UpdateTyping",
+    "RelativePath": "api/employer/messages/{id}/typing",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "input",
+        "Type": "JobTot.Api.Controllers.AccountMessagesController\u002BTypingInput",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.AccountMessagesController",
+    "Method": "People",
+    "RelativePath": "api/employer/messages/people",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "q",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerTalentDiscoveryController",
+    "Method": "List",
+    "RelativePath": "api/employer/talent-discovery",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "Keyword",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "CampaignId",
+        "Type": "System.Nullable\u00601[[System.Guid, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "ProvinceId",
+        "Type": "System.Nullable\u00601[[System.Guid, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "Skill",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "MinYears",
+        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "MaxYears",
+        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "MinScore",
+        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "Readiness",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "Collection",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "Sort",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "Page",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "PageSize",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerTalentDiscoveryController",
+    "Method": "Get",
+    "RelativePath": "api/employer/talent-discovery/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "campaignId",
+        "Type": "System.Nullable\u00601[[System.Guid, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerTalentDiscoveryController",
+    "Method": "Interest",
+    "RelativePath": "api/employer/talent-discovery/{id}/interest",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "input",
+        "Type": "JobTot.Api.Controllers.EmployerTalentDiscoveryController\u002BInterestRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerTalentDiscoveryController",
+    "Method": "Saved",
+    "RelativePath": "api/employer/talent-discovery/{id}/saved",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "input",
+        "Type": "JobTot.Api.Controllers.EmployerTalentDiscoveryController\u002BSavedRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.EmployerTalentDiscoveryController",
+    "Method": "Metadata",
+    "RelativePath": "api/employer/talent-discovery/metadata",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.IndustriesController",
+    "Method": "Overview",
+    "RelativePath": "api/industries/overview",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.JobsController",
+    "Method": "Search",
+    "RelativePath": "api/jobs",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "Keyword",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "Location",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "ProvinceId",
+        "Type": "System.Nullable\u00601[[System.Guid, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "CompanyId",
+        "Type": "System.Nullable\u00601[[System.Guid, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "IncludeClosed",
+        "Type": "System.Boolean",
+        "IsRequired": false
+      },
+      {
+        "Name": "IndustryId",
+        "Type": "System.Nullable\u00601[[System.Guid, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "VerifiedOnly",
+        "Type": "System.Boolean",
+        "IsRequired": false
+      },
+      {
+        "Name": "SalaryBand",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "ExperienceLevels",
+        "Type": "System.String[]",
+        "IsRequired": false
+      },
+      {
+        "Name": "PositionLevels",
+        "Type": "System.String[]",
+        "IsRequired": false
+      },
+      {
+        "Name": "EmploymentTypes",
+        "Type": "System.String[]",
+        "IsRequired": false
+      },
+      {
+        "Name": "JobIds",
+        "Type": "System.Guid[]",
+        "IsRequired": false
+      },
+      {
+        "Name": "Page",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "PageSize",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "JobTot.Application.PageResult\u00601[[JobTot.Application.JobDto, JobTot.Application, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.JobsController",
+    "Method": "Create",
+    "RelativePath": "api/jobs",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "JobTot.Application.CreateJobRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "JobTot.Application.JobDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.JobsController",
+    "Method": "Get",
+    "RelativePath": "api/jobs/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "JobTot.Application.JobDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.JobsController",
+    "Method": "Update",
+    "RelativePath": "api/jobs/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "JobTot.Application.SaveJobRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "JobTot.Application.JobDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.JobsController",
+    "Method": "Close",
+    "RelativePath": "api/jobs/{id}/close",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "JobTot.Api.Controllers.JobsController",
+    "Method": "Filters",
+    "RelativePath": "api/jobs/filters",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "JobTot.Application.JobDirectoryMetadata",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  }
+]
