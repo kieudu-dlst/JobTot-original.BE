@@ -2,6 +2,7 @@ using System.Text.Json;
 using JobTot.Application.Profiles;
 using JobTot.Domain.Entities;
 using JobTot.Domain.Enums;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace JobTot.Infrastructure.Persistence;
@@ -114,6 +115,95 @@ public sealed class CandidateProfileRepository(RecruitmentDbContext db)
             global::JobTot.Application.ExceptionDiagnostics.Record(
                 exception,
                 "CandidateProfileRepository.SetCvDefaultAsync"
+            );
+            throw;
+        }
+    }
+
+    public async Task<IReadOnlyList<ProfileCv>?> DeleteCvAsync(
+        Guid accountId,
+        Guid cvId,
+        CancellationToken ct
+    )
+    {
+        try
+        {
+            return await db
+                .Database.CreateExecutionStrategy()
+                .ExecuteAsync(async () =>
+                {
+                    await using var transaction =
+                        db.Database.IsRelational() && db.Database.CurrentTransaction is null
+                            ? await db.Database.BeginTransactionAsync(
+                                System.Data.IsolationLevel.Serializable,
+                                ct
+                            )
+                            : null;
+                    // Read only metadata; PDF/document payloads can be large.
+                    var cvs = await db
+                        .CandidateCvRecords.AsNoTracking()
+                        .Where(c =>
+                            c.Candidate.AccountId == accountId
+                            && c.Candidate.Status == EntityStatus.Active
+                            && c.Candidate.Account.Status == EntityStatus.Active
+                            && c.Status == EntityStatus.Active
+                        )
+                        .OrderByDescending(c => c.CreatedDate)
+                        .ThenBy(c => c.Id)
+                        .Select(c => new CvState(
+                            c.Id,
+                            c.Title,
+                            c.IsDefault,
+                            c.OnlineDocumentJson != null,
+                            c.DocumentVersion
+                        ))
+                        .ToListAsync(ct);
+                    var selected = cvs.SingleOrDefault(c => c.Id == cvId);
+                    if (selected is null)
+                        return (IReadOnlyList<ProfileCv>?)null;
+
+                    SetDefault(selected, false);
+                    var cv = db.CandidateCvRecords.Local.Single(c => c.Id == cvId);
+                    // Restore originals as well if the execution strategy retries a rolled-back write.
+                    db.Entry(cv).Property(c => c.Status).OriginalValue = EntityStatus.Active;
+                    db.Entry(cv).Property(c => c.DocumentVersion).OriginalValue = selected.Version;
+                    // Preserve CVs referenced by existing applications, as in CV Studio deletion.
+                    cv.Status = EntityStatus.Deleted;
+                    cv.DocumentVersion = Guid.NewGuid();
+                    cv.UpdatedDate = DateTimeOffset.UtcNow;
+                    cv.UpdatedAccountId = accountId;
+                    await db.SaveChangesAsync(ct);
+
+                    // Release the filtered unique default slot before promoting the next CV.
+                    var replacement = cvs.FirstOrDefault(c => c.Id != cvId);
+                    if (selected.IsDefault && replacement is not null)
+                    {
+                        SetDefault(replacement, true);
+                        await db.SaveChangesAsync(ct);
+                    }
+                    var remaining = cvs
+                        .Where(c => c.Id != cvId)
+                        .Select(c => new ProfileCv(
+                            c.Id,
+                            c.Title,
+                            selected.IsDefault ? c.Id == replacement?.Id : c.IsDefault,
+                            c.IsOnline
+                        ))
+                        .ToList();
+                    if (transaction is not null)
+                        await transaction.CommitAsync(ct);
+                    return (IReadOnlyList<ProfileCv>)remaining;
+                });
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            global::JobTot.Application.ExceptionDiagnostics.Record(
+                exception,
+                "CandidateProfileRepository.DeleteCvAsync"
             );
             throw;
         }
@@ -273,14 +363,40 @@ public sealed class CandidateProfileRepository(RecruitmentDbContext db)
     public async Task<CandidateProfileResponse?> SaveAsync(
         Guid accountId,
         CandidateProfileDocument document,
-        CancellationToken ct
+        CancellationToken ct,
+        string? phone = null
     )
     {
         try
         {
+            var normalizedPhone = CandidateProfilePhone.Normalize(phone);
             var p = await Find(accountId, ct);
             if (p is null)
                 return null;
+            if (phone is not null)
+            {
+                if (normalizedPhone is null && string.IsNullOrWhiteSpace(p.Account.Email))
+                    throw new ArgumentException(
+                        "Tài khoản đăng nhập bằng số điện thoại cần giữ số điện thoại."
+                    );
+                if (normalizedPhone is not null)
+                {
+                    // Also recognize legacy demo numbers stored without the canonical +84 prefix.
+                    var aliases = new[]
+                    {
+                        normalizedPhone,
+                        "0" + normalizedPhone[3..],
+                        normalizedPhone[1..],
+                    };
+                    if (
+                        await db.AccountRecords.AnyAsync(
+                            a => a.Id != accountId && aliases.Contains(a.Phone),
+                            ct
+                        )
+                    )
+                        throw new CandidatePhoneConflictException();
+                }
+            }
             var previous = Response(p, []).Profile;
             document.AvatarUrl = previous.AvatarUrl;
             if (document.ProvinceId is { } addressProvinceId)
@@ -376,7 +492,25 @@ public sealed class CandidateProfileRepository(RecruitmentDbContext db)
             p.ExpectedSalaryMax = document.ExpectedSalaryMax;
             p.UpdatedDate = DateTimeOffset.UtcNow;
             p.UpdatedAccountId = accountId;
-            await db.SaveChangesAsync(ct);
+            if (phone is not null && p.Account.Phone != normalizedPhone)
+            {
+                p.Account.Phone = normalizedPhone;
+                p.Account.UpdatedDate = DateTimeOffset.UtcNow;
+                p.Account.UpdatedAccountId = accountId;
+            }
+            try
+            {
+                await db.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateException exception)
+                when (
+                    exception.InnerException is SqlException { Number: 2601 or 2627 } sql
+                    && sql.Message.Contains("IX_Account_Phone", StringComparison.OrdinalIgnoreCase)
+                )
+            {
+                // The unique index is the final guard against concurrent updates.
+                throw new CandidatePhoneConflictException();
+            }
             return Response(p, await CvSummariesAsync(p.Id, ct));
         }
         catch (OperationCanceledException)
