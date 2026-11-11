@@ -120,7 +120,8 @@ public interface ICandidateProfileRepository
     Task<CandidateProfileResponse?> SaveAsync(
         Guid accountId,
         CandidateProfileDocument document,
-        CancellationToken ct
+        CancellationToken ct,
+        string? phone = null
     );
     Task<CandidateProfileResponse?> SetAvatarAsync(
         Guid accountId,
@@ -137,6 +138,11 @@ public interface ICandidateProfileRepository
         Guid accountId,
         Guid cvId,
         bool isDefault,
+        CancellationToken ct
+    );
+    Task<IReadOnlyList<ProfileCv>?> DeleteCvAsync(
+        Guid accountId,
+        Guid cvId,
         CancellationToken ct
     );
     Task<(string Name, byte[] Content)?> GetCvAsync(

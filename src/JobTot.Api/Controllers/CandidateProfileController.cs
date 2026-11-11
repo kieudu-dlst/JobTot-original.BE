@@ -41,6 +41,41 @@ public sealed class CandidateProfileController(
 
     public sealed record CvDefaultInput(bool IsDefault);
 
+    [HttpDelete("cvs/{id:guid}")]
+    public async Task<ActionResult<IReadOnlyList<ProfileCv>>> DeleteCv(
+        Guid id,
+        CancellationToken ct
+    )
+    {
+        try
+        {
+            return await repository.DeleteCvAsync(AccountId, id, ct) is { } cvs
+                ? Ok(cvs)
+                : NotFound();
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException)
+        {
+            return Conflict(
+                new ProblemDetails
+                {
+                    Detail = "Danh sách CV đã thay đổi. Vui lòng tải lại hồ sơ và thử lại.",
+                }
+            );
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            global::JobTot.Application.ExceptionDiagnostics.Record(
+                exception,
+                "CandidateProfileController.DeleteCv"
+            );
+            throw;
+        }
+    }
+
     [HttpGet]
     public async Task<ActionResult<CandidateProfileResponse>> Get(CancellationToken ct)
     {
@@ -64,13 +99,13 @@ public sealed class CandidateProfileController(
 
     [HttpPut]
     public async Task<ActionResult<CandidateProfileResponse>> Put(
-        CandidateProfileDocument document,
+        CandidateProfileUpdateRequest request,
         CancellationToken ct
     )
     {
         try
         {
-            return await repository.SaveAsync(AccountId, document, ct) is { } p
+            return await repository.SaveAsync(AccountId, request.Profile, ct, request.Phone) is { } p
                 ? Ok(p)
                 : NotFound();
         }

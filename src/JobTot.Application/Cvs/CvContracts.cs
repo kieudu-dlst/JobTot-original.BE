@@ -56,6 +56,9 @@ public sealed class CvDocument : IValidatableObject
     [Range(10, 20)]
     public int Margin { get; set; } = 15;
 
+    [MaxLength(5)]
+    public List<CvDecorationImage> DecorationImages { get; set; } = [];
+
     [MinLength(1), MaxLength(20)]
     public List<CvSection> Sections { get; set; } =
         [
@@ -89,6 +92,22 @@ public sealed class CvDocument : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext context)
     {
+        if (DecorationImages is null || DecorationImages.Count > 5
+            || DecorationImages.Any(i => i is null)
+            || DecorationImages.Select(i => i.Id).Distinct().Count() != DecorationImages.Count)
+            yield return new("Mỗi CV có tối đa 5 ảnh trang trí với ID riêng biệt.", [nameof(DecorationImages)]);
+        else
+            foreach (var image in DecorationImages)
+                if (image.Id == Guid.Empty || string.IsNullOrWhiteSpace(image.Url)
+                    || image.Url.Length > 200
+                    || !double.IsFinite(image.X) || !double.IsFinite(image.Y)
+                    || !double.IsFinite(image.Width) || !double.IsFinite(image.Height)
+                    || !double.IsFinite(image.Opacity)
+                    || image.X < 0 || image.Y < 0 || image.Width <= 0 || image.Height <= 0
+                    || image.X + image.Width > 210.001 || image.Y + image.Height > 297.001
+                    || image.Page is < 1 or > 100 || image.Opacity is < 0 or > 1
+                    || image.ZIndex is < -10 or > 10 || image.ZIndex == 0)
+                    yield return new("Vị trí, kích thước, trang hoặc lớp ảnh trang trí không hợp lệ. Ảnh phải nằm trong trang A4.", [nameof(DecorationImages)]);
         if (!string.IsNullOrEmpty(AvatarDataUri))
         {
             var prefix =

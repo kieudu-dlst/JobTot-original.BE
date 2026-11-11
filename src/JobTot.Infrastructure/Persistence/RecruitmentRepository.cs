@@ -1,11 +1,12 @@
 using JobTot.Application;
+using JobTot.Application.Cvs;
 using JobTot.Domain.Entities;
 using JobTot.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace JobTot.Infrastructure.Persistence;
 
-internal sealed class RecruitmentRepository(RecruitmentDbContext db) : IRecruitmentRepository
+internal sealed class RecruitmentRepository(RecruitmentDbContext db, ICvDecorationStorage decorations) : IRecruitmentRepository
 {
     public async Task<Company?> GetCompanyAsync(Guid id, CancellationToken ct)
     {
@@ -476,6 +477,9 @@ internal sealed class RecruitmentRepository(RecruitmentDbContext db) : IRecruitm
                 )
             )
                 throw new JobApplicationConflictException("Bạn đã ứng tuyển việc làm này.");
+            // Pin media references from the moment the CV snapshot is read until it is
+            // persisted. A concurrent CV save must not clean up images in this snapshot.
+            await using var imageLock = await decorations.LockAsync(ct);
             var cv = await db
                 .CandidateCvRecords.AsNoTracking()
                 .Where(x =>
