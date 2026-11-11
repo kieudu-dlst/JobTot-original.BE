@@ -150,6 +150,17 @@ app.UseStaticFiles(
     }
 );
 
+using var decorationScope = app.Services.CreateScope();
+var decorationFiles = decorationScope.ServiceProvider.GetRequiredService<JobTot.Application.Cvs.ICvDecorationStorage>();
+Directory.CreateDirectory(decorationFiles.DirectoryPath);
+using var decorationProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(decorationFiles.DirectoryPath);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = decorationProvider,
+    RequestPath = "/uploads/cv-decorations",
+    OnPrepareResponse = context => context.Context.Response.Headers["X-Content-Type-Options"] = "nosniff",
+});
+
 // Allow both local launch profiles without redirecting Swagger's fetch to another origin.
 if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();

@@ -1,2 +1,9 @@
 .env
 .vs/
+
+# .NET build output
+**/[Bb]in/
+**/[Oo]bj/
+
+# Generated decoration files and ownership metadata (configure persistent storage in production).
+**/App_Data/cv-decorations/

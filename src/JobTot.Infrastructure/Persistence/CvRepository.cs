@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace JobTot.Infrastructure.Persistence;
 
-public sealed class CvRepository(RecruitmentDbContext db) : ICvRepository
+public sealed class CvRepository(RecruitmentDbContext db, ICvDecorationStorage decorations) : ICvRepository
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
@@ -218,6 +218,7 @@ public sealed class CvRepository(RecruitmentDbContext db) : ICvRepository
     {
         try
         {
+            await using var imageLock = await decorations.LockAsync(ct);
             var template = id is null
                 ? new CvTemplate { CreatedAccountId = accountId }
                 : await Templates(true).SingleOrDefaultAsync(t => t.Id == id, ct);
@@ -225,6 +226,8 @@ public sealed class CvRepository(RecruitmentDbContext db) : ICvRepository
                 return null;
             if (id is not null && template.Version != input.Version)
                 throw new CvVersionConflictException();
+            var previous = template.DesignJson is null ? null : Document(template.DesignJson);
+            await decorations.ValidateAsync(input.Document, previous, accountId, id, true, ct);
             var category = await db.CvCategoryRecords.FirstOrDefaultAsync(
                 c => c.Name == input.Category && c.Status == EntityStatus.Active,
                 ct
@@ -246,6 +249,8 @@ public sealed class CvRepository(RecruitmentDbContext db) : ICvRepository
             if (id is null)
                 db.Add(template);
             await Persist(ct);
+            await decorations.CleanupAsync((previous?.DecorationImages ?? []).Select(i => i.Id)
+                .Except(input.Document.DecorationImages.Select(i => i.Id)), ct);
             return Template(template);
         }
         catch (OperationCanceledException)
@@ -303,6 +308,7 @@ public sealed class CvRepository(RecruitmentDbContext db) : ICvRepository
     {
         try
         {
+            await using var imageLock = await decorations.LockAsync(ct);
             var template = await Templates(false)
                 .AsNoTracking()
                 .Where(t => t.Id == templateId)
@@ -405,17 +411,22 @@ public sealed class CvRepository(RecruitmentDbContext db) : ICvRepository
     {
         try
         {
+            await using var imageLock = await decorations.LockAsync(ct);
             var cv = await Owned(accountId).SingleOrDefaultAsync(c => c.Id == id, ct);
             if (cv is null)
                 return null;
             if (cv.DocumentVersion != input.Version)
                 throw new CvVersionConflictException();
+            var previous = Document(cv.OnlineDocumentJson!);
+            await decorations.ValidateAsync(input.Document, previous, accountId, id, false, ct);
             cv.Title = input.Title.Trim();
             cv.OnlineDocumentJson = JsonSerializer.Serialize(input.Document, Json);
             cv.DocumentVersion = Guid.NewGuid();
             cv.UpdatedDate = DateTimeOffset.UtcNow;
             cv.UpdatedAccountId = accountId;
             await Persist(ct);
+            await decorations.CleanupAsync(previous.DecorationImages.Select(i => i.Id)
+                .Except(input.Document.DecorationImages.Select(i => i.Id)), ct);
             return Cv(cv);
         }
         catch (OperationCanceledException)

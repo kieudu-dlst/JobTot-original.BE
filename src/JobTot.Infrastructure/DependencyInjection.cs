@@ -18,6 +18,7 @@ public static class DependencyInjection
         );
         services.AddScoped<IRecruitmentRepository, RecruitmentRepository>();
         services.AddScoped<JobTot.Application.Cvs.ICvRepository, CvRepository>();
+        services.AddScoped<JobTot.Application.Cvs.ICvDecorationStorage, CvDecorationStorage>();
         services.AddScoped<
             JobTot.Application.Profiles.ICandidateJobsRepository,
             CandidateJobsRepository

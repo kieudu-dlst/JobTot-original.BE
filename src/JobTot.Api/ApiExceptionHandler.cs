@@ -1,5 +1,6 @@
 using JobTot.Application;
 using JobTot.Application.Authentication;
+using JobTot.Application.Profiles;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -27,6 +28,7 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : I
             EmailSecurityException email => (email.Status, "Xác thực email"),
             EmployerCompanyConflictException => (409, "Doanh nghiệp đã tồn tại"),
             DuplicateAccountException => (409, "Tài khoản đã tồn tại"),
+            CandidatePhoneConflictException => (409, "Số điện thoại đã được sử dụng"),
             InvalidCredentialsException => (401, "Đăng nhập không thành công"),
             JobApplicationConflictException => (409, "Không thể ứng tuyển"),
             NotFoundException => (404, "Resource not found"),
