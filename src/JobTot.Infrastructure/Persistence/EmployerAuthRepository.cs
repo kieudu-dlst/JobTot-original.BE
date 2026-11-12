@@ -65,7 +65,7 @@ public sealed class EmployerAuthRepository(RecruitmentDbContext db) : IEmployerA
                 .Database.CreateExecutionStrategy()
                 .ExecuteAsync(async () =>
                 {
-                    await using var transaction = db.Database.IsRelational()
+                    await using var transaction = db.Database.IsRelational() && db.Database.CurrentTransaction is null
                         ? await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct)
                         : null;
                     var company = account.RecruiterProfiles.Single().Company;
