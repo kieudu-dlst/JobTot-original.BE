@@ -67,6 +67,10 @@ builder.Services.AddEmployerAuthentication();
 builder.Services.AddScoped<EmployerPasswordRecovery>();
 builder.Services.AddScoped<PasswordRecovery>();
 builder.Services.AddScoped<AccountEmailSecurity>();
+builder.Services.AddScoped<ExternalAuthService>();
+builder.Services.AddSingleton<IExternalIdentityClient, ExternalIdentityClient>();
+builder.Services.AddHttpClient("external-auth", client => client.Timeout = TimeSpan.FromSeconds(20))
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false });
 builder.Services.AddScoped<IAccountEmailSender, SmtpAccountEmailSender>();
 builder.Services.AddScoped<IRecoveryEmailSender, SmtpRecoveryEmailSender>();
 builder.Services.AddProblemDetails();

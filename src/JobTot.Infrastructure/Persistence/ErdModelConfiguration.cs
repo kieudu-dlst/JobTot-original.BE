@@ -59,7 +59,9 @@ internal static class ErdModelConfiguration
                 .HasForeignKey(x => x.AccountId)
                 .OnDelete(DeleteBehavior.NoAction);
             entity.Property(x => x.Provider).HasMaxLength(200).IsRequired();
-            entity.Property(x => x.ProviderSubject).HasMaxLength(256).IsRequired();
+            entity.Property(x => x.ProviderSubject).HasMaxLength(256).IsRequired()
+                .UseCollation("Latin1_General_100_BIN2");
+            entity.HasIndex(x => new { x.Provider, x.ProviderSubject }).IsUnique();
         }
         {
             var entity = modelBuilder.Entity<Province>();

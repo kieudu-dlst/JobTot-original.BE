@@ -1249,6 +1249,36 @@ namespace JobTot.Infrastructure.Persistence.Migrations
                     b.ToTable("EmploymentType", (string)null);
                 });
 
+            modelBuilder.Entity("JobTot.Domain.Entities.ExternalAuthFlow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BrowserSecretHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("ProtectedData")
+                        .IsRequired()
+                        .HasMaxLength(16000)
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.ToTable("ExternalAuthFlows");
+                });
+
             modelBuilder.Entity("JobTot.Domain.Entities.ExternalLogin", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1274,7 +1304,8 @@ namespace JobTot.Infrastructure.Persistence.Migrations
                     b.Property<string>("ProviderSubject")
                         .IsRequired()
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("nvarchar(256)")
+                        .UseCollation("Latin1_General_100_BIN2");
 
                     b.Property<int>("Status")
                         .ValueGeneratedOnAdd()
