@@ -21,6 +21,7 @@ public sealed class ExternalAuthController(ExternalAuthService service) : Contro
     [HttpPost("{provider}/start"), EnableRateLimiting(CandidateAuthentication.RateLimitPolicy)]
     public async Task<IActionResult> Start(string role, string provider, StartRequest request, CancellationToken ct)
     {
+        ExternalIdentityClient.AllowedProvider(provider, role);
         RequireIntent();
         var (row, secret, url) = await service.Start(role, provider, request.Mode, request.ReturnTo, ct);
         Response.Cookies.Append(ExternalAuthService.CookieName(row.Id), secret, new CookieOptions
@@ -42,7 +43,7 @@ public sealed class ExternalAuthController(ExternalAuthService service) : Contro
     public async Task<IActionResult> Callback(string role, string provider, string? state, string? code,
         string? error, CancellationToken ct)
     {
-        ExternalIdentityClient.AllowedProvider(provider, role); // Also reject direct employer Facebook/LinkedIn callbacks.
+        ExternalIdentityClient.AllowedProvider(provider, role);
         Response.Headers["Referrer-Policy"] = "no-referrer";
         var id = state?.Split('.').FirstOrDefault();
         if (!Guid.TryParseExact(id, "N", out var flowId))

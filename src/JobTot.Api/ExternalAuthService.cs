@@ -137,15 +137,11 @@ public sealed class ExternalAuthService(RecruitmentDbContext db, IDataProtection
             ["response_type"] = "code",
             ["scope"] = p.Scope,
             ["state"] = $"{row.Id:N}.{stateSecret}",
+            ["nonce"] = data.Nonce,
+            ["code_challenge"] = WebEncoders.Base64UrlEncode(SHA256.HashData(Encoding.ASCII.GetBytes(data.Verifier))),
+            ["code_challenge_method"] = "S256",
+            ["prompt"] = "select_account",
         };
-        if (p.Name != "Facebook")
-            query["nonce"] = data.Nonce;
-        if (p.Name == "Google")
-        {
-            query["code_challenge"] = WebEncoders.Base64UrlEncode(SHA256.HashData(Encoding.ASCII.GetBytes(data.Verifier)));
-            query["code_challenge_method"] = "S256";
-            query["prompt"] = "select_account";
-        }
         return (row, browserSecret, QueryHelpers.AddQueryString(p.AuthorizationEndpoint, query));
     }
 
@@ -206,7 +202,7 @@ public sealed class ExternalAuthService(RecruitmentDbContext db, IDataProtection
             Update(row, data with
             {
                 Stage = "failed",
-                Error = error is "access_denied" or "user_cancelled_login" or "user_cancelled_authorize"
+                Error = error == "access_denied"
                 ? "Bạn đã hủy xác thực. Bạn có thể thử lại hoặc sử dụng email."
                 : "Nhà cung cấp không hoàn tất xác thực. Vui lòng thử lại hoặc sử dụng email."
             });

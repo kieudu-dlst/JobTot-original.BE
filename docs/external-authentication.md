@@ -1,6 +1,6 @@
 # Đăng ký và đăng nhập mạng xã hội
 
-Ứng viên dùng email/mật khẩu, Google, Facebook và LinkedIn. Nhà tuyển dụng dùng email/mật khẩu và Google. Backend kiểm tra vai trò ở cả đầu luồng, callback và bước tạo/liên kết tài khoản. Không có chế độ giả lập nào trong ứng dụng production; nhà cung cấp giả lập chỉ được đăng ký trong `tools/ExternalAuthChecks`.
+Ứng viên và Nhà tuyển dụng đều dùng email/mật khẩu và Google. Backend kiểm tra vai trò ở cả đầu luồng, callback và bước tạo/liên kết tài khoản. Không có chế độ giả lập nào trong ứng dụng production; nhà cung cấp giả lập chỉ được đăng ký trong `tools/ExternalAuthChecks`.
 
 ## Cấu hình backend
 
@@ -14,11 +14,6 @@ ASP.NET Core hiện không tự đọc tệp `BE/.env`. Nếu lưu biến trong 
 | `ExternalAuth__WebOrigin` | Origin frontend, ví dụ `https://jobtot.example` |
 | `ExternalAuth__Google__ClientId` | Google OAuth Web client ID |
 | `ExternalAuth__Google__ClientSecret` | Google OAuth client secret |
-| `ExternalAuth__Facebook__ClientId` | Meta app ID |
-| `ExternalAuth__Facebook__ClientSecret` | Meta app secret |
-| `ExternalAuth__Facebook__GraphApiVersion` | Phiên bản Graph API được app Meta hỗ trợ, dạng `vNN.N`; không tự chọn phiên bản mới nhất |
-| `ExternalAuth__LinkedIn__ClientId` | LinkedIn client ID |
-| `ExternalAuth__LinkedIn__ClientSecret` | LinkedIn client secret |
 | `Cors__AllowedOrigins__0` | Origin frontend chính xác; thêm `__1`, `__2` khi cần |
 
 Origin không chứa path/query/fragment. Production bắt buộc HTTPS. HTTP chỉ được phép với loopback trong Development. Local nên thống nhất `localhost` cho cả FE/API, không trộn `localhost` và `127.0.0.1` vì cookie không chia sẻ giữa hai hostname. Frontend và API cần cùng site, ví dụ hai subdomain cùng domain, hoặc dùng proxy `/api`. Cookie giao dịch là HttpOnly, SameSite=Lax, Secure khi API công khai là HTTPS. Nếu dùng proxy, cấu hình `ApiOrigin` là URL công khai và chuyển tiếp đầy đủ cookie.
@@ -42,10 +37,8 @@ Thay `{API_ORIGIN}` bằng `ExternalAuth:ApiOrigin`. Callback luôn ở backend;
 | --- | --- |
 | Google / Ứng viên | `{API_ORIGIN}/api/candidate/auth/external/google/callback` |
 | Google / Nhà tuyển dụng | `{API_ORIGIN}/api/employer/auth/external/google/callback` |
-| Facebook / Ứng viên | `{API_ORIGIN}/api/candidate/auth/external/facebook/callback` |
-| LinkedIn / Ứng viên | `{API_ORIGIN}/api/candidate/auth/external/linkedin/callback` |
 
-Không đăng ký callback Facebook/LinkedIn cho Nhà tuyển dụng: backend từ chối với 403 kể cả gọi trực tiếp.
+API chỉ chấp nhận Google cho cả hai vai trò. Yêu cầu `start` và `callback` trực tiếp với Facebook, LinkedIn hoặc nhà cung cấp khác trả HTTP 400. Giao dịch cũ của nhà cung cấp đã gỡ cũng bị từ chối khi đọc hoặc hoàn tất.
 
 ### Google
 
@@ -53,23 +46,9 @@ Tạo OAuth client loại **Web application** trong Google Cloud, cấu hình Br
 
 Tài liệu: [Google OpenID Connect](https://developers.google.com/identity/openid-connect/openid-connect).
 
-### Facebook
-
-Tạo app trong Meta for Developers, thêm use case **Facebook Login**, bật Web OAuth và nhập Valid OAuth Redirect URI của Ứng viên. Cấu hình App Domains, Site URL, chính sách bảo mật và các yêu cầu xóa dữ liệu theo dashboard Meta. Trong Development thêm test users/developers; trước khi phát hành hoàn tất quyền/review/business verification mà dashboard yêu cầu. Scope: `public_profile,email`. Chọn phiên bản Graph API đang được app hỗ trợ và đặt `GraphApiVersion` tương ứng.
-
-Backend đổi code bằng app ID/secret, gọi Graph `/me?fields=id,name,email` bằng access token và `appsecret_proof`. Lưu app-scoped `id`. Email có thể không được cấp; luồng hoàn tất sẽ yêu cầu nhập và xác minh email Job Tốt. Facebook không được coi là nguồn `email_verified` trong triển khai này. Access token của nhà cung cấp không được lưu.
-
-Tài liệu: [Facebook server login flow](https://developers.facebook.com/docs/facebook-login/guides/advanced/manual-flow/). Quyền và khả năng phát hành thực tế cần kiểm tra trong app dashboard.
-
-### LinkedIn
-
-Tạo ứng dụng trong LinkedIn Developer Portal, liên kết Page nếu dashboard yêu cầu. Trong **Products**, xin quyền **Sign In with LinkedIn using OpenID Connect**. Thêm callback Ứng viên vào **Auth → Authorized redirect URLs**, lấy client ID/secret. Scope dùng `openid profile email`, không dùng các scope legacy `r_liteprofile`/`r_emailaddress`. Backend xác thực ID token/JWKS, nonce và subject như Google; email và email_verified là tùy chọn, thiếu thông tin sẽ chuyển sang bước hoàn tất/xác minh email.
-
-Tài liệu: [LinkedIn OIDC](https://learn.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/sign-in-with-linkedin-v2).
-
 ## Hành vi tài khoản
 
-1. POST `/api/{candidate|employer}/auth/external/{provider}/start` với `{mode:"register"|"login",returnTo?}` và header `X-JobTot-External: 1`. Trình duyệt phải giữ cookie của giao dịch.
+1. POST `/api/{candidate|employer}/auth/external/google/start` với `{mode:"register"|"login",returnTo?}` và header `X-JobTot-External: 1`. Trình duyệt phải giữ cookie của giao dịch.
 2. Backend ghi giao dịch 15 phút và trả authorization URL. Callback kiểm tra state, cookie, vai trò/phương thức và chỉ nhận callback một lần; sau đó đổi code bằng backend.
 3. Frontend tải thông tin giao dịch bằng GET `/flows/{id}`. URL chỉ có ID giao dịch, không có JWT hay access token. Giao dịch được bảo vệ bằng cookie bí mật và dữ liệu mã hóa Data Protection.
 4. Đăng nhập chỉ cấp phiên cho liên kết provider/subject hiện có và tài khoản đúng vai trò còn hoạt động. Chưa liên kết: UI hướng dẫn chuyển sang đăng ký, POST `/flows/{id}/registration`, rồi người dùng xác nhận vai trò/điều khoản. Không tự đăng ký khi đang đăng nhập.
@@ -78,6 +57,12 @@ Tài liệu: [LinkedIn OIDC](https://learn.microsoft.com/en-us/linkedin/consumer
 7. Tạo account/link/refresh session, tiêu thụ mã email và tiêu thụ giao dịch nằm trong một transaction SQL Server; concurrency token và unique index ngăn dùng lại/nhận cùng provider subject. Tài khoản xã hội có password hash ngẫu nhiên không thể đoán để giữ password stamp/refresh/recovery hiện có. Người dùng muốn dùng mật khẩu có thể đi qua quên mật khẩu.
 
 Các endpoint POST của giao dịch yêu cầu header `X-JobTot-External: 1`; `/link-session` còn yêu cầu Bearer JWT và vai trò đúng. CORS chỉ cấp credentials cho origin được cho phép. Giới hạn tốc độ xác thực hiện có áp dụng cho start/register/login/link. Có thể xóa các dòng `ExternalAuthFlows` đã hết hạn bằng tác vụ bảo trì định kỳ; không xóa `ExternalLogin` theo thời hạn giao dịch.
+
+## Khôi phục tài khoản đã liên kết Facebook hoặc LinkedIn
+
+Các bản ghi `Account`, hồ sơ và `ExternalLogin` cũ được bảo toàn. Người dùng có email đã xác minh và còn truy cập hộp thư chọn đúng vai trò tại `/login`, bấm **Quên mật khẩu?**, nhận mật khẩu tạm qua email, rồi đăng nhập để đặt mật khẩu mới. Luồng này hỗ trợ cả tài khoản có password hash ngẫu nhiên lẫn tài khoản cũ có `PasswordHash` rỗng. ID tài khoản, hồ sơ và liên kết cũ được giữ sau khôi phục. Người dùng có thể liên kết Google sau khi xác thực tài khoản Job Tốt hiện có.
+
+Email khôi phục được gửi tới `Account.Email`; mật khẩu tạm xác nhận quyền truy cập hộp thư đó. Tài khoản thiếu email hoặc người dùng mất quyền truy cập hộp thư cần quản trị viên xác minh chủ sở hữu và hỗ trợ khôi phục. Tài khoản bị khóa/xóa tuân theo trạng thái tài khoản hiện có. Việc gửi email thực tế phụ thuộc cấu hình SMTP và khả năng gửi thư của môi trường triển khai.
 
 ## Migration
 
@@ -90,7 +75,7 @@ dotnet ef database update --project src/JobTot.Infrastructure --startup-project 
 dotnet ef migrations script --idempotent --project src/JobTot.Infrastructure --startup-project src/JobTot.Api --output external-auth-migrations.sql
 ```
 
-Migration đã được tạo, chưa áp dụng vào database đang dùng. Kiểm tra script và chạy migration trước khi bật các nút OAuth trên môi trường triển khai. Cần cho phép đổi collation/cập nhật index trên bảng ExternalLogin; thao tác có thể giữ khóa bảng trong thời gian triển khai.
+Database local `JobTot` đã được áp dụng migration này ngày 12/11/2026. Với database triển khai khác, kiểm tra lịch sử EF và chạy migration trước khi bật Google OAuth. Cần cho phép đổi collation/cập nhật index trên bảng ExternalLogin; thao tác có thể giữ khóa bảng trong thời gian triển khai.
 
 ## Kiểm tra và trạng thái bàn giao
 
@@ -110,19 +95,17 @@ node tests/external-auth-browser.mjs
 
 Khi liên kết bằng mật khẩu, kiểm tra mật khẩu và số lần thử mật khẩu tạm diễn ra trước transaction hoàn tất liên kết, để các lần thử sai vẫn được lưu khi liên kết bị từ chối. Transaction tạo/liên kết tài khoản không làm mất bộ đếm thử sai.
 
-**Tài khoản thật:** chưa thử Google, Facebook hoặc LinkedIn với tài khoản thật. Cần điền OAuth credentials/callback, quyền app và SMTP của môi trường đích; không đưa bí mật vào hội thoại. Sau cấu hình, chạy smoke test bằng test users của từng dashboard: đăng ký → logout → login lại; từ chối quyền/hủy; email thiếu/trùng; đăng ký Nhà tuyển dụng và xác nhận Pending; đổi vai trò; gọi trực tiếp employer Facebook/LinkedIn và xác nhận 403.
+**Tài khoản thật:** cần thử Google và SMTP bằng tài khoản thật của môi trường đích. Chạy đăng ký → logout → login lại cho cả hai vai trò, hủy cấp quyền, email thiếu/trùng, đăng ký Nhà tuyển dụng và xác nhận Pending, cùng khôi phục mật khẩu qua hộp thư thật. API Facebook/LinkedIn được kiểm tra từ chối ở cả hai vai trò bằng bộ kiểm tra tự động.
 
 Báo cáo tự động lưu tại `.artifacts/external-auth-checks/` của workspace. Các kết quả thực tế của lần bàn giao được ghi trong báo cáo JSON và phản hồi cuối.
 
-### Kết quả lần kiểm tra này
+### Phạm vi bộ kiểm tra
 
-- Frontend: `npm.cmd run check` đạt ESLint và build. Build còn cảnh báo có sẵn về `/images/profile-reference.png` và kích thước bundle.
-- Backend: build API và test harness thành công, 0 warning và 0 error.
-- 118 kiểm tra backend/giao thức đạt. Bao gồm tạo tài khoản, đăng nhập, refresh/logout, email thiếu/trùng, liên kết bằng mật khẩu hoặc phiên đã đăng nhập, đổi mật khẩu tạm, số lần thử sai, replay/state/cookie, từ chối sai vai trò và ID token không hợp lệ.
-- 62 kiểm tra Chrome đạt trên desktop 1440px và mobile 390px, không có lỗi runtime. Bao gồm đăng ký và đăng nhập bằng từng phương thức được phép, email OTP, thông tin doanh nghiệp, liên kết khi trùng email, quên mật khẩu/đổi mật khẩu tạm, hủy và lỗi/chưa cấu hình nhà cung cấp.
-- Đã xem ảnh desktop/mobile; nút mạng xã hội và tab giữ đúng vai trò, email dài trong OTP xuống dòng trong màn hình.
-- Database và nhà cung cấp trong kiểm tra là giả lập. Chưa chạy kiểm tra SQL Server staging, SMTP thật hoặc OAuth bằng tài khoản thật. Test harness bỏ giới hạn tốc độ để chạy toàn bộ kịch bản liên tiếp; policy production hiện có vẫn được giữ trong API.
-- Script migration đã được xuất và kiểm tra tại `.artifacts/external-auth-checks/migration.sql`; chưa thực thi trên database đang dùng.
+- Giao diện `/login` và `/register` của cả hai vai trò trên desktop 1440px và mobile 390px có một nút Google toàn chiều rộng, cùng trường email/mật khẩu.
+- API từ chối `start`/`callback` Facebook và LinkedIn, kể cả tên khác chữ hoa/thường và giao dịch cũ đã sẵn sàng hoàn tất.
+- Kiểm tra Google bao gồm đăng ký, đăng nhập, liên kết tài khoản, refresh/logout và kiểm chứng ID token/PKCE qua fixture.
+- Kiểm tra email bao gồm OTP, đăng ký/đăng nhập, quên mật khẩu và khôi phục tài khoản xã hội cũ qua mật khẩu tạm ở cả hai vai trò, đồng thời đối chiếu ID tài khoản, hồ sơ và liên kết cũ.
+- Kết quả từng lần chạy được ghi trong `backend-result.json` và `browser-result.json` tại `.artifacts/external-auth-checks/` của workspace.
 
 ### Các tệp triển khai
 

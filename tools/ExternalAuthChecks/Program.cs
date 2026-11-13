@@ -127,23 +127,14 @@ object Registration(string email, string? emailVerificationToken = null, bool em
     headOfficeProvinceId = "00000000-0000-0000-0000-000000000001",
     recruitmentCommitment = employer,
 };
-foreach (var provider in new[] { "google", "facebook", "linkedin" })
+foreach (var provider in new[] { "google" })
 {
     var role = "candidate";
     var email = $"{provider}.backend@checks.example";
     var flow = await Start(role, provider, "register", $"{provider}-backend");
-    string? verification = null;
-    if (provider == "facebook")
-    {
-        await Json(await client.PostAsJsonAsync($"/api/{role}/auth/external/flows/{flow.Id}/register", Registration(email)), 400);
-        using var scope = app.Services.CreateScope();
-        var security = scope.ServiceProvider.GetRequiredService<AccountEmailSecurity>();
-        var id = await security.RequestVerification(email, "Candidate", default);
-        verification = (await security.Verify(id, email, "Candidate", app.Services.GetRequiredService<TestMail>().Codes[email], default)).Token;
-    }
-    var session = await Json(await client.PostAsJsonAsync($"/api/{role}/auth/external/flows/{flow.Id}/register", Registration(email, verification)));
+    var session = await Json(await client.PostAsJsonAsync($"/api/{role}/auth/external/flows/{flow.Id}/register", Registration(email)));
     Check(session.GetProperty("account").GetProperty("accountType").GetString() == "Candidate", $"{provider}: candidate created only after completion");
-    await Json(await client.PostAsJsonAsync($"/api/{role}/auth/external/flows/{flow.Id}/register", Registration(email, verification)), 409);
+    await Json(await client.PostAsJsonAsync($"/api/{role}/auth/external/flows/{flow.Id}/register", Registration(email)), 409);
     var login = await Start(role, provider, "login", $"{provider}-backend");
     var signedIn = await Json(await client.PostAsJsonAsync($"/api/{role}/auth/external/flows/{login.Id}/session", new
     {
@@ -171,14 +162,14 @@ var employerSession = await Json(await client.PostAsJsonAsync($"/api/employer/au
 Check(employerSession.GetProperty("account").GetProperty("verificationStatus").GetString() == "Pending", "Google employer retains company verification workflow");
 var employerLogin = await Start("employer", "google", "login", "google-employerbackend");
 await Json(await client.PostAsJsonAsync($"/api/employer/auth/external/flows/{employerLogin.Id}/session", new { rememberMe = true }));
-foreach (var provider in new[] { "facebook", "linkedin" })
+foreach (var role in new[] { "candidate", "employer" })
+foreach (var provider in new[] { "facebook", "linkedin", "Facebook", "LINKEDIN" })
 {
-    await Json(await client.PostAsJsonAsync($"/api/employer/auth/external/{provider}/start", new
-    {
-        mode = "register"
-    }), 403);
-    var forbidden = await client.GetAsync($"/api/employer/auth/external/{provider}/callback?state=bad&code=bad");
-    Check(forbidden.StatusCode == HttpStatusCode.Forbidden, $"employer direct {provider} callback denied");
+    foreach (var mode in new[] { "register", "login" })
+        await Json(await client.PostAsJsonAsync($"/api/{role}/auth/external/{provider}/start", new { mode }), 400);
+    var forbidden = await client.GetAsync($"/api/{role}/auth/external/{provider}/callback?state=bad&code=bad");
+    Check(forbidden.StatusCode == HttpStatusCode.BadRequest && forbidden.Headers.Location is null,
+        $"{role} direct {provider} callback denied before redirecting");
 }
 var missing = await Start("candidate", "google", "login", "missing");
 await Json(await client.PostAsJsonAsync($"/api/candidate/auth/external/flows/{missing.Id}/session", new { }), 409);
@@ -220,13 +211,13 @@ var duplicate = await Start("candidate", "google", "register", "duplicate");
 await Json(await client.PostAsJsonAsync($"/api/candidate/auth/external/flows/{duplicate.Id}/register", Registration("another@checks.example")), 409);
 await Json(await client.PostAsJsonAsync($"/api/candidate/auth/external/flows/{duplicate.Id}/link", new { identity = "duplicate@checks.example", password = "wrong", confirmLink = true }), 401);
 var linkedSession = await Json(await client.PostAsJsonAsync($"/api/candidate/auth/external/flows/{duplicate.Id}/link", new { identity = "duplicate@checks.example", password = "Password123!", confirmLink = true }));
-var sessionLink = await Start("candidate", "facebook", "login", "duplicate");
+var sessionLink = await Start("candidate", "google", "login", "duplicate-second");
 client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", linkedSession.GetProperty("accessToken").GetString());
 await Json(await client.PostAsJsonAsync($"/api/candidate/auth/external/flows/{sessionLink.Id}/link-session", new { confirmLink = false }), 400);
 await Json(await client.PostAsJsonAsync($"/api/candidate/auth/external/flows/{sessionLink.Id}/link-session", new { confirmLink = true }));
 client.DefaultRequestHeaders.Authorization = null;
 await Json(await client.PostAsJsonAsync("/api/candidate/auth/forgot-password", new { email = "duplicate@checks.example" }));
-var temporaryFlow = await Start("candidate", "linkedin", "login", "duplicate");
+var temporaryFlow = await Start("candidate", "google", "login", "duplicate-third");
 await Json(await client.PostAsJsonAsync($"/api/candidate/auth/external/flows/{temporaryFlow.Id}/link", new { identity = "duplicate@checks.example", password = "wrong-temporary-password", confirmLink = true }), 401);
 using (var scope = app.Services.CreateScope())
 {
@@ -263,6 +254,99 @@ var wrongRole = await Start("employer", "google", "login", "google-backend");
 var wrongRoleData = await Json(await client.GetAsync($"/api/employer/auth/external/flows/{wrongRole.Id}"));
 Check(wrongRoleData.GetProperty("wrongRole").GetBoolean(), "provider identity linked to other role is rejected");
 await Json(await client.PostAsJsonAsync($"/api/employer/auth/external/flows/{wrongRole.Id}/session", new { }), 403);
+
+// Exercise recovery for legacy social-only accounts through the public email endpoints.
+var legacyNumber = 0;
+foreach (var role in new[] { "candidate", "employer" })
+foreach (var provider in new[] { "Facebook", "LinkedIn" })
+{
+    legacyNumber++;
+    var email = $"legacy.{role}.{provider.ToLowerInvariant()}@checks.example";
+    var requested = await Json(await client.PostAsJsonAsync($"/api/{role}/auth/email/request", new { email }));
+    var verified = await Json(await client.PostAsJsonAsync($"/api/{role}/auth/email/verify", new
+    {
+        email,
+        challengeId = requested.GetProperty("challengeId").GetGuid(),
+        code = app.Services.GetRequiredService<TestMail>().Codes[email],
+    }));
+    var registered = await Json(await client.PostAsJsonAsync($"/api/{role}/auth/register", new
+    {
+        fullName = "Tài khoản cũ",
+        email,
+        emailOrPhone = email,
+        emailVerificationToken = verified.GetProperty("verificationToken").GetString(),
+        password = "Password123!",
+        confirmPassword = "Password123!",
+        workPhone = $"098765430{legacyNumber}",
+        companyName = $"Công ty cũ {legacyNumber}",
+        taxCode = $"012345670{legacyNumber}",
+        headOfficeProvinceId = "00000000-0000-0000-0000-000000000001",
+        acceptTerms = true,
+        recruitmentCommitment = true,
+    }), 201);
+    var accountId = registered.GetProperty("account").GetProperty("id").GetGuid();
+    var profileKey = role == "candidate" ? "candidateProfileId" : "recruiterProfileId";
+    var profileId = registered.GetProperty("account").GetProperty(profileKey).GetGuid();
+    var passwordLogin = new { email, emailOrPhone = email, password = "Password123!" };
+    await Json(await client.PostAsJsonAsync($"/api/{role}/auth/login", passwordLogin));
+    var browserSecret = ExternalAuthService.NewSecret();
+    var legacyFlow = new ExternalAuthFlow
+    {
+        BrowserSecretHash = ExternalAuthService.Hash(browserSecret),
+        ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(15),
+    };
+    Guid linkId;
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<RecruitmentDbContext>();
+        var account = await db.AccountRecords.SingleAsync(x => x.Id == accountId);
+        account.PasswordHash = provider == "Facebook" ? null :
+            scope.ServiceProvider.GetRequiredService<IAccountPasswordHasher>().Hash(account, ExternalAuthService.NewSecret());
+        var link = new ExternalLogin { AccountId = accountId, Provider = provider, ProviderSubject = $"legacy-{role}" };
+        linkId = link.Id;
+        db.Add(link);
+        var protector = scope.ServiceProvider.GetRequiredService<IDataProtectionProvider>().CreateProtector("JobTot.ExternalAuth.v1");
+        legacyFlow.ProtectedData = protector.Protect(JsonSerializer.Serialize(new ExternalFlowData(
+            role, provider, "register", "state", "", "", "/jobs", "ready",
+            new ExternalIdentity(link.ProviderSubject, email, "Tài khoản cũ", true))));
+        db.Add(legacyFlow);
+        await db.SaveChangesAsync();
+    }
+    handler.CookieContainer.Add(new Uri(origin), new Cookie(ExternalAuthService.CookieName(legacyFlow.Id), browserSecret, "/api"));
+    await Json(await client.GetAsync($"/api/{role}/auth/external/flows/{legacyFlow.Id}"), 400);
+    await Json(await client.PostAsJsonAsync($"/api/{role}/auth/external/flows/{legacyFlow.Id}/register", Registration(email, employer: role == "employer")), 400);
+    await Json(await client.PostAsJsonAsync($"/api/{role}/auth/external/flows/{legacyFlow.Id}/session", new { }), 400);
+    await Json(await client.PostAsJsonAsync($"/api/{role}/auth/forgot-password", new { email }));
+    var temporaryPassword = app.Services.GetRequiredService<TestMail>().TemporaryPasswords[email];
+    var change = await Json(await client.PostAsJsonAsync($"/api/{role}/auth/login", new
+    {
+        email,
+        emailOrPhone = email,
+        password = temporaryPassword,
+    }), 428);
+    var changed = await client.PostAsJsonAsync($"/api/{role}/auth/email/change-temporary-password", new
+    {
+        token = change.GetProperty("changeToken").GetString(),
+        password = "RecoveredPassword123!",
+        confirmPassword = "RecoveredPassword123!",
+    });
+    Check(changed.StatusCode == HttpStatusCode.NoContent, $"{role} legacy {provider}: email recovery sets a password without knowing the previous password");
+    var recovered = await Json(await client.PostAsJsonAsync($"/api/{role}/auth/login", new
+    {
+        email,
+        emailOrPhone = email,
+        password = "RecoveredPassword123!",
+    }));
+    Check(recovered.GetProperty("account").GetProperty("id").GetGuid() == accountId &&
+        recovered.GetProperty("account").GetProperty(profileKey).GetGuid() == profileId,
+        $"{role} legacy {provider}: email login preserves account and profile identity");
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<RecruitmentDbContext>();
+        Check(await db.ExternalLoginRecords.AnyAsync(x => x.Id == linkId && x.AccountId == accountId && x.Provider == provider),
+            $"{role} legacy {provider}: original provider link preserved");
+    }
+}
 await ProtocolChecks.Run(Check);
 await File.WriteAllTextAsync(Path.Combine(output, "backend-result.json"), JsonSerializer.Serialize(new { passed = true, checks, database = "isolated InMemory; no real account or database modified", providers = "fixtures, not live accounts" }, new JsonSerializerOptions { WriteIndented = true }));
 Console.WriteLine($"PASS {checks.Count} backend/protocol checks");
@@ -273,14 +357,14 @@ public sealed class FakeIdentityClient : IExternalIdentityClient
     public ExternalProvider Provider(string provider, string role)
     {
         var name = ExternalIdentityClient.AllowedProvider(provider, role);
-        return new(name, "checks", "checks", $"http://127.0.0.1:5199/checks/authorize/{provider}", "", "", null, "checks");
+        return new(name, "checks", "checks", $"http://127.0.0.1:5199/checks/authorize/{provider}", "", "", "", "checks");
     }
     public Task<ExternalIdentity> Exchange(ExternalProvider provider, string code, string callback, string verifier, string nonce, CancellationToken ct)
     {
         if (code == "provider-error")
             throw new Microsoft.IdentityModel.Tokens.SecurityTokenException("provider failure");
-        var email = code == "missing" ? null : code == "duplicate" ? "duplicate@checks.example" : code.Replace('-', '.') + "@checks.example";
-        return Task.FromResult(new ExternalIdentity(code, email, code == "missing" ? null : "Người dùng thử nghiệm", provider.Name != "Facebook"));
+        var email = code == "missing" ? null : code.StartsWith("duplicate", StringComparison.Ordinal) ? "duplicate@checks.example" : code.Replace("-alias", "").Replace('-', '.') + "@checks.example";
+        return Task.FromResult(new ExternalIdentity(code, email, code == "missing" ? null : "Người dùng thử nghiệm", true));
     }
 }
 public sealed class TestMail : IAccountEmailSender, IRecoveryEmailSender
