@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using JobTot.Application;
 using JobTot.Application.Administration;
-using JobTot.Application.Authentication;
 using JobTot.Domain.Entities;
 using JobTot.Domain.Enums;
 using JobTot.Infrastructure.Persistence;
@@ -13,10 +12,7 @@ namespace JobTot.Api.Controllers;
 
 [ApiController, Route("api/admin"), Authorize(Policy = AdminAuthentication.Policy)]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-public sealed class AdminManagementController(
-    RecruitmentDbContext db,
-    IAccountPasswordHasher passwords
-) : ControllerBase
+public sealed class AdminManagementController(RecruitmentDbContext db) : ControllerBase
 {
     private Guid AdminId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
@@ -281,38 +277,6 @@ public sealed class AdminManagementController(
         catch (Exception exception)
         {
             ExceptionDiagnostics.Record(exception, "AdminManagementController.UserStatus");
-            throw;
-        }
-    }
-
-    [HttpPut("users/{id:guid}/password")]
-    public async Task<IActionResult> Password(
-        Guid id,
-        AdminPasswordInput input,
-        CancellationToken ct
-    )
-    {
-        try
-        {
-            var account = await db.AccountRecords.SingleOrDefaultAsync(
-                a => a.Id == id && a.Status != EntityStatus.Deleted,
-                ct
-            );
-            if (account is null)
-                return NotFound();
-            account.PasswordHash = passwords.Hash(account, input.Password);
-            Touch(account);
-            await RevokeSessions(id, ct);
-            await db.SaveChangesAsync(ct);
-            return NoContent();
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            ExceptionDiagnostics.Record(exception, "AdminManagementController.Password");
             throw;
         }
     }

@@ -1079,6 +1079,7 @@ public sealed class EmployerCandidatesController(RecruitmentDbContext db) : Cont
                                 f.Score,
                                 f.Decision,
                                 f.Comment,
+                                isOwn = f.RecruiterId == m.Id,
                                 reviewer = f.Recruiter.Account.FullName,
                             }),
                     })

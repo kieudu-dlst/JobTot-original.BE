@@ -58,12 +58,6 @@ public sealed class AdminVerificationInput
     public string VerificationStatus { get; init; } = "Pending";
 }
 
-public sealed class AdminPasswordInput
-{
-    [Required, StringLength(128, MinimumLength = 12)]
-    public string Password { get; init; } = "";
-}
-
 public sealed class AdminIndustryInput
 {
     [Required, StringLength(200)]
