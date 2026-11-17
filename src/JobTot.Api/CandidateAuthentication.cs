@@ -112,7 +112,7 @@ public static class CandidateAuthentication
                     var origins =
                         configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
                     if (origins.Length > 0)
-                        policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod();
+                        policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
                 }
             )
         );

@@ -24,6 +24,7 @@ public sealed class RecruitmentDbContext(DbContextOptions<RecruitmentDbContext> 
     public DbSet<UsedCandidateRefreshToken> UsedCandidateRefreshTokens =>
         Set<UsedCandidateRefreshToken>();
     public DbSet<ExternalLogin> ExternalLoginRecords => Set<ExternalLogin>();
+    public DbSet<ExternalAuthFlow> ExternalAuthFlows => Set<ExternalAuthFlow>();
     public DbSet<Province> ProvinceRecords => Set<Province>();
     public DbSet<Industry> IndustryRecords => Set<Industry>();
     public DbSet<CompanyMedia> CompanyMediaRecords => Set<CompanyMedia>();
@@ -59,6 +60,14 @@ public sealed class RecruitmentDbContext(DbContextOptions<RecruitmentDbContext> 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<ExternalAuthFlow>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.BrowserSecretHash).HasMaxLength(64);
+            entity.Property(x => x.ProtectedData).HasMaxLength(16000);
+            entity.Property(x => x.Revision).IsConcurrencyToken();
+            entity.HasIndex(x => x.ExpiresAt);
+        });
         modelBuilder.Entity<AccountEmailChallenge>(entity =>
         {
             entity.HasKey(x => x.Id);

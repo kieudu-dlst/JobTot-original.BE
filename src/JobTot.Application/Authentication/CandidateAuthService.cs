@@ -41,7 +41,8 @@ public sealed class CandidateAuthService(
 
     public async Task<CandidateAccountDto> RegisterAsync(
         CandidateRegisterRequest request,
-        CancellationToken ct
+        CancellationToken ct,
+        ExternalLogin? externalLogin = null
     )
     {
         try
@@ -60,6 +61,7 @@ public sealed class CandidateAuthService(
                 AccountStatus = ActiveStatus,
             };
             account.PasswordHash = passwords.Hash(account, request.Password);
+            if (externalLogin is not null) account.ExternalLogins.Add(externalLogin);
             account.CandidateProfile = new CandidateProfile
             {
                 AccountId = account.Id,

@@ -15,7 +15,8 @@ public sealed class EmployerAuthService(
 
     public async Task<EmployerRegistrationResult> RegisterAsync(
         EmployerRegisterRequest request,
-        CancellationToken ct
+        CancellationToken ct,
+        ExternalLogin? externalLogin = null
     )
     {
         try
@@ -53,6 +54,7 @@ public sealed class EmployerAuthService(
                 AccountStatus = ActiveStatus,
             };
             account.PasswordHash = passwords.Hash(account, request.Password);
+            if (externalLogin is not null) account.ExternalLogins.Add(externalLogin);
             account.RecruiterProfiles.Add(
                 new RecruiterProfile
                 {
