@@ -1,20 +1,23 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 using JobTot.Application.Authentication;
-using Microsoft.AspNetCore.DataProtection;
+namespace JobTot.Application.Authentication;
 
-namespace JobTot.Api;
+public interface IRecoveryEmailSender
+{
+    Task SendAsync(string email, string link, CancellationToken ct);
+}
 
-public sealed class EmployerPasswordRecovery(
-    IEmployerAuthRepository repository,
+public sealed class PasswordRecovery(
+    ICandidateAuthRepository repository,
     IAccountPasswordHasher passwords,
-    IDataProtectionProvider protection,
+    ISecretProtection protection,
     IRecoveryEmailSender sender,
-    IConfiguration configuration
+    IAppConfiguration configuration
 )
 {
-    private readonly IDataProtector protector = protection.CreateProtector(
-        "JobTot.Employer.PasswordReset.v1"
+    private readonly ISecretProtector protector = protection.CreateProtector(
+        "JobTot.Candidate.PasswordReset.v1"
     );
 
     private sealed record ResetTicket(
@@ -43,7 +46,7 @@ public sealed class EmployerPasswordRecovery(
             );
             if (
                 account is null
-                || !EmployerAuthService.IsActiveEmployer(account)
+                || !CandidateAuthService.IsActiveCandidate(account)
                 || account.PasswordHash is null
             )
                 return;
@@ -58,7 +61,7 @@ public sealed class EmployerPasswordRecovery(
             );
             await sender.SendAsync(
                 account.Email!,
-                $"{url!.TrimEnd('/')}/reset-password?role=employer#token={Uri.EscapeDataString(token)}",
+                $"{url!.TrimEnd('/')}/reset-password#token={Uri.EscapeDataString(token)}",
                 ct
             );
         }
@@ -70,7 +73,7 @@ public sealed class EmployerPasswordRecovery(
         {
             global::JobTot.Application.ExceptionDiagnostics.Record(
                 exception,
-                "EmployerPasswordRecovery.RequestAsync"
+                "PasswordRecovery.RequestAsync"
             );
             throw;
         }
@@ -98,7 +101,7 @@ public sealed class EmployerPasswordRecovery(
             var account = await repository.GetAsync(ticket.AccountId, ct);
             if (
                 account is null
-                || !EmployerAuthService.IsActiveEmployer(account)
+                || !CandidateAuthService.IsActiveCandidate(account)
                 || account.PasswordHash != ticket.PasswordHash
             )
                 throw InvalidLink();
@@ -120,7 +123,7 @@ public sealed class EmployerPasswordRecovery(
         {
             global::JobTot.Application.ExceptionDiagnostics.Record(
                 exception,
-                "EmployerPasswordRecovery.ResetAsync"
+                "PasswordRecovery.ResetAsync"
             );
             throw;
         }
@@ -142,7 +145,7 @@ public sealed class EmployerPasswordRecovery(
         {
             global::JobTot.Application.ExceptionDiagnostics.Record(
                 exception,
-                "EmployerPasswordRecovery.InvalidLink"
+                "PasswordRecovery.InvalidLink"
             );
             throw;
         }

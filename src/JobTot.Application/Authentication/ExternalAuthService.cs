@@ -6,12 +6,7 @@ using System.Text.Json;
 using JobTot.Application.Authentication;
 using JobTot.Domain.Entities;
 using JobTot.Domain.Enums;
-using JobTot.Infrastructure.Persistence;
-using Microsoft.AspNetCore.DataProtection;
-using Microsoft.AspNetCore.WebUtilities;
-using Microsoft.EntityFrameworkCore;
-
-namespace JobTot.Api;
+namespace JobTot.Application.Authentication;
 
 public sealed record ExternalFlowData(string Role, string Provider, string Mode, string StateHash,
     string Verifier, string Nonce, string ReturnTo, string Stage = "authorizing",
@@ -76,18 +71,15 @@ public sealed class ExternalSessionLinkRequest
         get; init;
     }
 }
-public sealed class ExternalPasswordChangeException(string token) : Exception
-{
-    public string Token { get; } = token;
-}
+public sealed record ExternalLinkResult(object? Session = null, string? ChangeToken = null);
 
-public sealed class ExternalAuthService(RecruitmentDbContext db, IDataProtectionProvider protection,
-    IExternalIdentityClient identities, IConfiguration configuration, IWebHostEnvironment environment,
+public sealed class ExternalAuthService(IRecruitmentData db, ISecretProtection protection,
+    IExternalIdentityClient identities, IAppConfiguration configuration, IRuntimeEnvironment environment,
     CandidateAuthService candidates, EmployerAuthService employers, CandidateTokens candidateTokens,
     EmployerTokens employerTokens, AccountEmailSecurity emailSecurity)
 {
-    private readonly IDataProtector protector = protection.CreateProtector("JobTot.ExternalAuth.v1");
-    public static string NewSecret() => WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
+    private readonly ISecretProtector protector = protection.CreateProtector("JobTot.ExternalAuth.v1");
+    public static string NewSecret() => ExternalUrls.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
     public static string Hash(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
     public static string CookieName(Guid id) => $"jobtot.external.{id:N}";
     private static string Normalize(string email) => email.Trim().ToLowerInvariant();
@@ -97,14 +89,14 @@ public sealed class ExternalAuthService(RecruitmentDbContext db, IDataProtection
         var value = configuration[$"ExternalAuth:{key}"];
         if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) || uri.AbsolutePath != "/" ||
             uri.Query.Length > 0 || uri.Fragment.Length > 0 || uri.UserInfo.Length > 0 ||
-            (uri.Scheme != "https" && !(environment.IsDevelopment() && uri.Scheme == "http" && uri.IsLoopback)))
+            (uri.Scheme != "https" && !(environment.IsDevelopment && uri.Scheme == "http" && uri.IsLoopback)))
             throw new EmailSecurityException(503, "Đăng nhập mạng xã hội chưa được cấu hình địa chỉ ứng dụng hợp lệ.");
         return uri.GetLeftPart(UriPartial.Authority);
     }
 
     public string CallbackUrl(string role, string provider) => $"{Origin("ApiOrigin")}/api/{role}/auth/external/{provider.ToLowerInvariant()}/callback";
     public string FrontendUrl(string role, Guid? id = null, string? error = null) =>
-        QueryHelpers.AddQueryString($"{Origin("WebOrigin")}/auth/external", new Dictionary<string, string?>
+        ExternalUrls.AddQueryString($"{Origin("WebOrigin")}/auth/external", new Dictionary<string, string?>
         {
             ["role"] = role,
             ["flow"] = id?.ToString(),
@@ -138,11 +130,11 @@ public sealed class ExternalAuthService(RecruitmentDbContext db, IDataProtection
             ["scope"] = p.Scope,
             ["state"] = $"{row.Id:N}.{stateSecret}",
             ["nonce"] = data.Nonce,
-            ["code_challenge"] = WebEncoders.Base64UrlEncode(SHA256.HashData(Encoding.ASCII.GetBytes(data.Verifier))),
+            ["code_challenge"] = ExternalUrls.Base64UrlEncode(SHA256.HashData(Encoding.ASCII.GetBytes(data.Verifier))),
             ["code_challenge_method"] = "S256",
             ["prompt"] = "select_account",
         };
-        return (row, browserSecret, QueryHelpers.AddQueryString(p.AuthorizationEndpoint, query));
+        return (row, browserSecret, ExternalUrls.AddQueryString(p.AuthorizationEndpoint, query));
     }
 
     private ExternalFlowData Data(ExternalAuthFlow row)
@@ -166,7 +158,7 @@ public sealed class ExternalAuthService(RecruitmentDbContext db, IDataProtection
     public async Task<(ExternalAuthFlow Row, ExternalFlowData Data)> Read(string role, Guid id,
         string? browserSecret, CancellationToken ct)
     {
-        ExternalIdentityClient.Role(role);
+        ExternalAuthPolicy.Role(role);
         var row = await db.ExternalAuthFlows.SingleOrDefaultAsync(x => x.Id == id, ct);
         if (row is null || row.ExpiresAt <= DateTimeOffset.UtcNow || browserSecret is null ||
             !CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(row.BrowserSecretHash), Encoding.ASCII.GetBytes(Hash(browserSecret))))
@@ -174,7 +166,7 @@ public sealed class ExternalAuthService(RecruitmentDbContext db, IDataProtection
         var data = Data(row);
         if (data.Role != role)
             throw new EmailSecurityException(403, "Vai trò không khớp với phiên xác thực.");
-        ExternalIdentityClient.AllowedProvider(data.Provider, role);
+        ExternalAuthPolicy.AllowedProvider(data.Provider, role);
         if (data.Stage == "consumed")
             throw new EmailSecurityException(409, "Phiên xác thực đã được sử dụng. Vui lòng bắt đầu lại.");
         return (row, data);
@@ -183,7 +175,7 @@ public sealed class ExternalAuthService(RecruitmentDbContext db, IDataProtection
     public async Task Callback(string role, string provider, string state, string? cookie,
         string? code, string? error, CancellationToken ct)
     {
-        ExternalIdentityClient.AllowedProvider(provider, role);
+        ExternalAuthPolicy.AllowedProvider(provider, role);
         var pieces = state.Split('.');
         if (pieces.Length != 2 || !Guid.TryParseExact(pieces[0], "N", out var id))
             throw new EmailSecurityException(400, "Kết quả xác thực không hợp lệ.");
@@ -222,7 +214,7 @@ public sealed class ExternalAuthService(RecruitmentDbContext db, IDataProtection
                 });
             }
             catch (Exception exception) when (exception is HttpRequestException or JsonException
-                or Microsoft.IdentityModel.Tokens.SecurityTokenException or InvalidOperationException
+                or ExternalIdentityException or InvalidOperationException
                 or KeyNotFoundException || exception is OperationCanceledException && !ct.IsCancellationRequested)
             {
                 Update(row, data with
@@ -238,7 +230,7 @@ public sealed class ExternalAuthService(RecruitmentDbContext db, IDataProtection
     }
 
     private async Task<ExternalLogin?> Link(ExternalFlowData data, CancellationToken ct) =>
-        await db.ExternalLoginRecords.Include(x => x.Account).SingleOrDefaultAsync(
+        await db.ExternalLoginRecords.With(x => x.Account).SingleOrDefaultAsync(
             x => x.Provider == data.Provider && x.ProviderSubject == data.Identity!.Subject, ct);
 
     private static void Ready(ExternalFlowData data)
@@ -252,7 +244,7 @@ public sealed class ExternalAuthService(RecruitmentDbContext db, IDataProtection
         var (_, data) = await Read(role, id, cookie, ct);
         var link = data.Stage == "ready" ? await Link(data, ct) : null;
         var duplicate = data.Identity?.Email is { } email && await db.AccountRecords.AnyAsync(x => x.Email == Normalize(email), ct);
-        var wrongRole = link is not null && link.Account.AccountType != ExternalIdentityClient.Role(role);
+        var wrongRole = link is not null && link.Account.AccountType != ExternalAuthPolicy.Role(role);
         return new
         {
             flowId = id,
@@ -278,11 +270,11 @@ public sealed class ExternalAuthService(RecruitmentDbContext db, IDataProtection
     {
         try
         {
-            return await db.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+            return await db.ExecuteAsync(async () =>
             {
-                db.ChangeTracker.Clear();
-                await using var transaction = db.Database.IsRelational()
-                    ? await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct) : null;
+                db.Reset();
+                await using var transaction = db.SupportsTransactions
+                    ? await db.BeginTransactionAsync(IsolationLevel.Serializable, ct) : null;
                 var (row, data) = await Read(role, id, cookie, ct);
                 Ready(data);
                 var result = await action(data, ct);
@@ -296,7 +288,7 @@ public sealed class ExternalAuthService(RecruitmentDbContext db, IDataProtection
                 return result;
             });
         }
-        catch (DbUpdateException exception) when (exception.InnerException is Microsoft.Data.SqlClient.SqlException { Number: 2601 or 2627 })
+        catch (DataWriteException exception) when (exception.IsDuplicate)
         {
             throw new EmailSecurityException(409, "Thông tin tài khoản hoặc liên kết đã được sử dụng. Vui lòng đăng nhập hoặc bắt đầu xác thực lại.");
         }
@@ -321,7 +313,7 @@ public sealed class ExternalAuthService(RecruitmentDbContext db, IDataProtection
             var link = await Link(data, token);
             if (link is null)
                 throw new EmailSecurityException(409, "Tài khoản chưa được liên kết. Vui lòng đăng ký và xác nhận vai trò trước khi tạo tài khoản.");
-            if (link.Status != EntityStatus.Active || link.Account.AccountType != ExternalIdentityClient.Role(role))
+            if (link.Status != EntityStatus.Active || link.Account.AccountType != ExternalAuthPolicy.Role(role))
                 throw new EmailSecurityException(403, "Tài khoản đã liên kết không thuộc vai trò này hoặc không khả dụng.");
             return await Session(role, link.AccountId, remember, token);
         }, ct);
@@ -339,7 +331,7 @@ public sealed class ExternalAuthService(RecruitmentDbContext db, IDataProtection
             if (await db.AccountRecords.AnyAsync(x => x.Email == email || (providerEmail != "" && x.Email == providerEmail), token))
                 throw new EmailSecurityException(409, "Email đã có tài khoản Job Tốt. Hãy đăng nhập tài khoản đó để xác nhận liên kết.");
             if (data.Identity!.EmailVerified != true || Normalize(data.Identity.Email ?? "") != email)
-                await emailSecurity.RequireVerification(email, ExternalIdentityClient.Role(role), request.EmailVerificationToken, token);
+                await emailSecurity.RequireVerification(email, ExternalAuthPolicy.Role(role), request.EmailVerificationToken, token);
             var link = new ExternalLogin { Provider = data.Provider, ProviderSubject = data.Identity.Subject };
             // An unguessable password preserves existing password stamps/recovery without adding a usable password.
             var password = NewSecret();
@@ -391,38 +383,34 @@ public sealed class ExternalAuthService(RecruitmentDbContext db, IDataProtection
         return await Describe(role, id, cookie, ct);
     }
 
-    public async Task<object> ConfirmLink(string role, Guid id, string? cookie, ExternalLinkRequest request, CancellationToken ct)
+    public async Task<ExternalLinkResult> ConfirmLink(string role, Guid id, string? cookie, ExternalLinkRequest request, CancellationToken ct)
     {
         var (_, pending) = await Read(role, id, cookie, ct);
         Ready(pending);
         Validate(request);
         // Authentication attempts must persist even when linking is rejected or requires
         // a temporary-password change; keep them outside the completion transaction.
-        Guid accountId;
+        Guid? accountId;
         if (role == "candidate")
             accountId = (await candidates.LoginAsync(new CandidateLoginRequest
             {
                 EmailOrPhone = request.Identity,
                 Password = request.Password
-            }, ct))?.Id
-                ?? await PasswordFailure(role, request, ct);
+            }, ct))?.Id;
         else
             accountId = (await employers.LoginAsync(new EmployerLoginRequest
             {
                 Email = request.Identity,
                 Password = request.Password
-            }, ct))?.Id
-                ?? await PasswordFailure(role, request, ct);
-        return await Complete(role, id, cookie,
-            (data, token) => LinkAccount(role, data, accountId, request.RememberMe, token), ct);
-    }
-
-    private async Task<Guid> PasswordFailure(string role, ExternalLinkRequest request, CancellationToken ct)
-    {
-        var change = await emailSecurity.TemporaryLogin(request.Identity, ExternalIdentityClient.Role(role), request.Password, ct);
-        if (change is not null)
-            throw new ExternalPasswordChangeException(change);
-        throw new EmailSecurityException(401, "Thông tin đăng nhập Job Tốt không đúng hoặc tài khoản không khả dụng.");
+            }, ct))?.Id;
+        if (accountId is null)
+        {
+            var change = await emailSecurity.TemporaryLogin(request.Identity, ExternalAuthPolicy.Role(role), request.Password, ct);
+            return new ExternalLinkResult(ChangeToken: change);
+        }
+        var session = await Complete(role, id, cookie,
+            (data, token) => LinkAccount(role, data, accountId.Value, request.RememberMe, token), ct);
+        return new ExternalLinkResult(Session: session);
     }
 
     public Task<object> ConfirmSessionLink(string role, Guid id, string? cookie, Guid accountId,
@@ -437,7 +425,7 @@ public sealed class ExternalAuthService(RecruitmentDbContext db, IDataProtection
         bool remember, CancellationToken token)
     {
         var account = await db.AccountRecords.SingleOrDefaultAsync(x => x.Id == accountId, token);
-        if (account?.AccountType != ExternalIdentityClient.Role(role))
+        if (account?.AccountType != ExternalAuthPolicy.Role(role))
             throw new EmailSecurityException(403, "Tài khoản Job Tốt không thuộc vai trò đã chọn.");
         var existing = await Link(data, token);
         var providerEmailAccount = data.Identity!.Email is { } email

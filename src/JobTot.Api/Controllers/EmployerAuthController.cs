@@ -1,11 +1,11 @@
 using System.Security.Claims;
 using JobTot.Application.Authentication;
 using JobTot.Domain.Enums;
-using JobTot.Infrastructure.Persistence;
+using JobTot.Application.Companies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.EntityFrameworkCore;
+
 
 namespace JobTot.Api.Controllers;
 
@@ -14,42 +14,17 @@ namespace JobTot.Api.Controllers;
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public sealed class EmployerAuthController(
     EmployerAuthService service,
+    EmployerAccess access,
     EmployerTokens tokens,
     EmployerPasswordRecovery recovery,
     AccountEmailSecurity emailSecurity
+
 ) : ControllerBase
 {
     [HttpGet("provinces")]
     [AllowAnonymous]
-    public async Task<IActionResult> Provinces(
-        [FromServices] RecruitmentDbContext db,
-        CancellationToken ct
-    )
-    {
-        try
-        {
-            return Ok(
-                await db
-                    .ProvinceRecords.AsNoTracking()
-                    .Where(p => p.Status == EntityStatus.Active)
-                    .OrderBy(p => p.ProvinceName)
-                    .Select(p => new { p.Id, name = p.ProvinceName })
-                    .ToListAsync(ct)
-            );
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            global::JobTot.Application.ExceptionDiagnostics.Record(
-                exception,
-                "EmployerAuthController.Provinces"
-            );
-            throw;
-        }
-    }
+    public async Task<IActionResult> Provinces([FromServices] ProvinceDirectory directory, CancellationToken ct) =>
+        Ok(await directory.ListAsync(ct));
 
     [HttpPost("register")]
     [AllowAnonymous]
@@ -62,13 +37,7 @@ public sealed class EmployerAuthController(
     {
         try
         {
-            await emailSecurity.RequireVerification(
-                request.Email,
-                "Employer",
-                request.EmailVerificationToken,
-                ct
-            );
-            var result = await service.RegisterAsync(request, ct);
+            var result = await access.RegisterAsync(request, ct);
             if (result.Status == EmployerRegistrationStatus.DuplicateAccount)
                 return Problem(
                     statusCode: StatusCodes.Status409Conflict,
@@ -81,7 +50,7 @@ public sealed class EmployerAuthController(
                     title: "Doanh nghiệp đã tồn tại",
                     detail: "Mã số thuế đã được đăng ký. Vui lòng liên hệ quản trị viên doanh nghiệp để được thêm tài khoản HR."
                 );
-            var session = await tokens.CreateAsync(result.Account!, rememberMe: false, ct);
+            var session = result.Session!;
             return CreatedAtAction(nameof(Me), session);
         }
         catch (OperationCanceledException)
@@ -109,28 +78,20 @@ public sealed class EmployerAuthController(
     {
         try
         {
-            var account = await service.LoginAsync(request, ct);
-            if (account is null)
-            {
-                var changeToken = await emailSecurity.TemporaryLogin(
-                    request.Email,
-                    "Employer",
-                    request.Password,
-                    ct
-                );
-                if (changeToken != null)
-                    return StatusCode(
-                        428,
-                        new { detail = "Đặt mật khẩu mới để hoàn tất đăng nhập.", changeToken }
-                    );
-            }
-            if (account is null)
+            var result = await access.LoginAsync(request, ct);
+            if (result.ChangeToken is { } changeToken)
+                return StatusCode(428, new
+                {
+                    detail = "Đặt mật khẩu mới để hoàn tất đăng nhập.",
+                    changeToken
+                });
+            if (result.Session is null)
                 return Problem(
                     statusCode: StatusCodes.Status401Unauthorized,
                     title: "Đăng nhập không thành công",
                     detail: "Email công việc hoặc mật khẩu không đúng, hoặc tài khoản nhà tuyển dụng không khả dụng."
                 );
-            return Ok(await tokens.CreateAsync(account, request.RememberMe, ct));
+            return Ok(result.Session);
         }
         catch (OperationCanceledException)
         {
@@ -182,11 +143,14 @@ public sealed class EmployerAuthController(
     {
         try
         {
-            await emailSecurity.RequestTemporaryPassword(request.Email, "Employer", ct);
+            var result = await emailSecurity.RequestTemporaryPassword(request.Email, "Employer", ct);
+            if (result.RateLimited)
+                return AccountEmailController.EmailCooldown(this, result.RetryAfterSeconds);
             return Ok(
                 new
                 {
-                    message = "Nếu email liên kết với tài khoản khả dụng, bạn sẽ nhận được mật khẩu tạm có hiệu lực 30 phút.",
+                    message = "Nếu email liên kết với tài khoản khả dụng, bạn sẽ nhận được mật khẩu tạm có hiệu lực 10 phút.",
+                    retryAfterSeconds = result.RetryAfterSeconds,
                 }
             );
         }

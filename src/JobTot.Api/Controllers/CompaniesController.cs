@@ -8,7 +8,9 @@ namespace JobTot.Api.Controllers;
 [Route("api/companies")]
 public sealed class CompaniesController(
     RecruitmentService service,
-    ICompanyDirectoryRepository directory
+    ICompanyDirectoryRepository directory,
+    CompanyDirectoryService companyDirectory
+
 ) : ControllerBase
 {
     [HttpGet]
@@ -61,17 +63,7 @@ public sealed class CompaniesController(
     {
         try
         {
-            var result = await directory.SearchAsync(
-                new CompanySearch
-                {
-                    VerifiedOnly = true,
-                    HiringOnly = true,
-                    Sort = "jobs",
-                    PageSize = 4,
-                },
-                ct
-            );
-            return Ok(result.Items);
+            return Ok(await companyDirectory.FeaturedAsync(ct));
         }
         catch (OperationCanceledException)
         {
@@ -117,7 +109,10 @@ public sealed class CompaniesController(
         try
         {
             var company = await service.CreateCompanyAsync(request, ct);
-            return CreatedAtAction(nameof(Get), new { id = company.Id }, company);
+            return CreatedAtAction(nameof(Get), new
+            {
+                id = company.Id
+            }, company);
         }
         catch (OperationCanceledException)
         {

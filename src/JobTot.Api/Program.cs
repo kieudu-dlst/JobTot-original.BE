@@ -14,8 +14,10 @@ builder
         () => new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false }
     );
 builder.Services.AddMemoryCache();
-builder.Services.AddSingleton<AvatarFileStorage>();
-builder.Services.AddSingleton<CompanyImageStorage>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentActor, CurrentActor>();
+builder.Services.AddApplication();
+
 builder.Services.AddOpenApi(options =>
 {
     options.AddDocumentTransformer(
@@ -64,18 +66,13 @@ builder.Services.AddCandidateAuthentication(
 );
 builder.Services.AddAdminAuthentication();
 builder.Services.AddEmployerAuthentication();
-builder.Services.AddScoped<EmployerPasswordRecovery>();
-builder.Services.AddScoped<PasswordRecovery>();
-builder.Services.AddScoped<AccountEmailSecurity>();
-builder.Services.AddScoped<ExternalAuthService>();
-builder.Services.AddSingleton<IExternalIdentityClient, ExternalIdentityClient>();
+
 builder.Services.AddHttpClient("external-auth", client => client.Timeout = TimeSpan.FromSeconds(20))
     .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false });
-builder.Services.AddScoped<IAccountEmailSender, SmtpAccountEmailSender>();
-builder.Services.AddScoped<IRecoveryEmailSender, SmtpRecoveryEmailSender>();
+
+
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
-builder.Services.AddScoped<RecruitmentService>();
 builder.Services.AddInfrastructure(
     builder.Configuration.GetConnectionString("SqlServer")
         ?? throw new InvalidOperationException("ConnectionStrings:SqlServer is required.")
@@ -84,11 +81,8 @@ var app = builder.Build();
 if (args.Contains("--migrate-avatars"))
 {
     using var scope = app.Services.CreateScope();
-    var count = await AvatarMigration.RunAsync(
-        scope.ServiceProvider.GetRequiredService<JobTot.Infrastructure.Persistence.RecruitmentDbContext>(),
-        app.Services.GetRequiredService<AvatarFileStorage>(),
-        app.Lifetime.ApplicationStopping
-    );
+    var count = await scope.ServiceProvider.GetRequiredService<AvatarMigration>()
+        .RunAsync(app.Lifetime.ApplicationStopping);
     app.Logger.LogInformation("Migrated {Count} avatars to backend files.", count);
     await app.DisposeAsync();
     return;
@@ -98,33 +92,9 @@ if (args.Contains("--migrate-avatars"))
 if (args.Contains("--create-admin") || args.Contains("--create-cv-admin"))
 {
     using var scope = app.Services.CreateScope();
-    var email = Environment.GetEnvironmentVariable("JOBTOT_ADMIN_EMAIL")?.Trim().ToLowerInvariant();
-    var password = Environment.GetEnvironmentVariable("JOBTOT_ADMIN_PASSWORD");
-    if (string.IsNullOrWhiteSpace(email) || password is null || password.Length < 12)
-        throw new InvalidOperationException(
-            "Set JOBTOT_ADMIN_EMAIL and JOBTOT_ADMIN_PASSWORD (at least 12 characters)."
-        );
-    var db =
-        scope.ServiceProvider.GetRequiredService<JobTot.Infrastructure.Persistence.RecruitmentDbContext>();
-    if (
-        await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.AnyAsync(
-            db.AccountRecords,
-            a => a.Email == email
-        )
-    )
-        throw new InvalidOperationException("Account already exists; no account was modified.");
-    var account = new JobTot.Domain.Entities.Account
-    {
-        Email = email,
-        FullName = "Quản trị viên",
-        AccountType = "Admin",
-        AccountStatus = "Active",
-    };
-    account.PasswordHash = scope
-        .ServiceProvider.GetRequiredService<JobTot.Application.Authentication.IAccountPasswordHasher>()
-        .Hash(account, password);
-    db.Add(account);
-    await db.SaveChangesAsync();
+    await scope.ServiceProvider.GetRequiredService<AdminProvisioning>().CreateAsync(
+        Environment.GetEnvironmentVariable("JOBTOT_ADMIN_EMAIL"),
+        Environment.GetEnvironmentVariable("JOBTOT_ADMIN_PASSWORD"), app.Lifetime.ApplicationStopping);
     await app.DisposeAsync();
     return;
 }

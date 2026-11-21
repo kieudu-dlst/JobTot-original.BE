@@ -1,16 +1,10 @@
-using System.Net;
-using System.Net.Mail;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using JobTot.Application.Authentication;
 using JobTot.Domain.Entities;
 using JobTot.Domain.Enums;
-using JobTot.Infrastructure.Persistence;
-using Microsoft.AspNetCore.DataProtection;
-using Microsoft.EntityFrameworkCore;
-
-namespace JobTot.Api;
+namespace JobTot.Application.Authentication;
 
 public sealed class EmailSecurityException(int status, string message) : Exception(message)
 {
@@ -18,56 +12,28 @@ public sealed class EmailSecurityException(int status, string message) : Excepti
 }
 
 public sealed record EmailVerificationResult(string? Token, string? Error);
+public sealed record EmailRequestResult(Guid? ChallengeId, int RetryAfterSeconds, bool RateLimited = false);
 
 public interface IAccountEmailSender
 {
-    Task SendAsync(string email, string subject, string body, CancellationToken ct);
-}
-
-public sealed class SmtpAccountEmailSender(IConfiguration configuration) : IAccountEmailSender
-{
-    public async Task SendAsync(string email, string subject, string body, CancellationToken ct)
-    {
-        var settings = configuration.GetSection("PasswordRecovery:Smtp");
-        if (
-            string.IsNullOrWhiteSpace(settings["Host"])
-            || string.IsNullOrWhiteSpace(settings["From"])
-        )
-            throw new EmailSecurityException(
-                503,
-                "Chưa cấu hình gửi email. Vui lòng liên hệ quản trị viên."
-            );
-        using var smtp = new SmtpClient(settings["Host"], settings.GetValue("Port", 587))
-        {
-            EnableSsl = settings.GetValue("EnableSsl", true),
-            UseDefaultCredentials = false,
-        };
-        if (!string.IsNullOrWhiteSpace(settings["Username"]))
-            smtp.Credentials = new NetworkCredential(settings["Username"], settings["Password"]);
-        using var mail = new MailMessage(settings["From"]!, email)
-        {
-            Subject = subject,
-            Body = body,
-        };
-        try
-        {
-            await smtp.SendMailAsync(mail, ct);
-        }
-        catch (SmtpException)
-        {
-            throw new EmailSecurityException(503, "Chưa gửi được email. Vui lòng thử lại sau.");
-        }
-    }
+    Task SendAsync(string email, string subject, AccountEmailContent body, CancellationToken ct);
 }
 
 public sealed class AccountEmailSecurity(
-    RecruitmentDbContext db,
+    IRecruitmentData db,
     IAccountEmailSender sender,
     IAccountPasswordHasher passwords,
-    IDataProtectionProvider protection
+    ISecretProtection protection
 )
 {
-    private readonly IDataProtector protector = protection.CreateProtector(
+    public Task ChangeTemporaryPassword(string role, string token, string password, string confirmation, CancellationToken ct)
+    {
+        if (password != confirmation)
+            throw new ArgumentException("Mật khẩu xác nhận không trùng khớp.");
+        return ChangeTemporaryPassword(role, token, password, ct);
+    }
+
+    private readonly ISecretProtector protector = protection.CreateProtector(
         "JobTot.EmailSecurity.v1"
     );
 
@@ -81,35 +47,27 @@ public sealed class AccountEmailSecurity(
 
     private static string Normalize(string email) => email.Trim().ToLowerInvariant();
 
-    private async Task Cooldown(string email, string role, string purpose, CancellationToken ct)
+    private async Task<int> Cooldown(string email, string role, string purpose, CancellationToken ct)
     {
-        var since = DateTimeOffset.UtcNow.AddSeconds(-60);
-        if (
-            await db.AccountEmailChallenges.AnyAsync(
-                x =>
-                    x.Email == email
-                    && x.Role == role
-                    && x.Purpose == purpose
-                    && x.CreatedAt > since,
-                ct
-            )
-        )
-            throw new EmailSecurityException(
-                429,
-                "Vui lòng đợi 60 giây trước khi yêu cầu email mới."
-            );
+        var latest = await db.AccountEmailChallenges
+            .Where(x => x.Email == email && x.Role == role && x.Purpose == purpose)
+            .MaxAsync(x => (DateTimeOffset?)x.CreatedAt, ct);
+        return latest is null ? 0 : Math.Max(0,
+            (int)Math.Ceiling((latest.Value.AddSeconds(60) - DateTimeOffset.UtcNow).TotalSeconds));
     }
 
-    public async Task<Guid> RequestVerification(string email, string role, CancellationToken ct)
+    public async Task<EmailRequestResult> RequestVerification(string email, string role, CancellationToken ct)
     {
         email = Normalize(email);
-        await Cooldown(email, role, "registration", ct);
+        var retryAfter = await Cooldown(email, role, "registration", ct);
+        if (retryAfter > 0)
+            return new EmailRequestResult(null, retryAfter, RateLimited: true);
         var challenge = new AccountEmailChallenge
         {
             Email = email,
             Role = role,
             Purpose = "registration",
-            ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(10),
+            ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(1),
         };
         var code = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
         challenge.SecretHash = Hash(challenge.Id, code);
@@ -120,7 +78,7 @@ public sealed class AccountEmailSecurity(
             await sender.SendAsync(
                 email,
                 "Mã xác thực email Job Tốt",
-                $"Mã xác thực của bạn là: {code}\nMã có hiệu lực 10 phút. Không chia sẻ mã này cho người khác.",
+                AccountEmailTemplates.Verification(code),
                 ct
             );
         }
@@ -130,7 +88,7 @@ public sealed class AccountEmailSecurity(
             await db.SaveChangesAsync(CancellationToken.None);
             throw;
         }
-        return challenge.Id;
+        return new EmailRequestResult(challenge.Id, 60);
     }
 
     public async Task<EmailVerificationResult> Verify(
@@ -197,7 +155,9 @@ public sealed class AccountEmailSecurity(
                 return ticket;
         }
         catch (Exception ex)
-            when (ex is CryptographicException or JsonException or ArgumentException) { }
+            when (ex is CryptographicException or JsonException or ArgumentException)
+        {
+        }
         throw new EmailSecurityException(400, "Thông tin xác thực không hợp lệ hoặc đã hết hạn.");
     }
 
@@ -229,10 +189,12 @@ public sealed class AccountEmailSecurity(
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task RequestTemporaryPassword(string email, string role, CancellationToken ct)
+    public async Task<EmailRequestResult> RequestTemporaryPassword(string email, string role, CancellationToken ct)
     {
         email = Normalize(email);
-        await Cooldown(email, role, "temporary-password", ct);
+        var retryAfter = await Cooldown(email, role, "temporary-password", ct);
+        if (retryAfter > 0)
+            return new EmailRequestResult(null, retryAfter, RateLimited: true);
         var account = await db.AccountRecords.SingleOrDefaultAsync(
             a =>
                 a.Email == email
@@ -242,7 +204,7 @@ public sealed class AccountEmailSecurity(
             ct
         );
         if (account is null)
-            return;
+            return new EmailRequestResult(null, 60);
         var secret = Convert.ToHexString(RandomNumberGenerator.GetBytes(12)) + "a!";
         var row = new AccountEmailChallenge
         {
@@ -250,7 +212,7 @@ public sealed class AccountEmailSecurity(
             Role = role,
             Purpose = "temporary-password",
             AccountId = account.Id,
-            ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(30),
+            ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(10),
             SecretHash = passwords.Hash(account, secret),
             PasswordStamp = Stamp(account.PasswordHash),
         };
@@ -262,7 +224,7 @@ public sealed class AccountEmailSecurity(
             await sender.SendAsync(
                 email,
                 "Mật khẩu tạm Job Tốt",
-                $"Mật khẩu tạm của bạn: {secret}\nCó hiệu lực 30 phút. Đăng nhập bằng mật khẩu này để đặt mật khẩu mới.\nNếu không yêu cầu, hãy bỏ qua email; mật khẩu hiện tại chưa thay đổi.",
+                AccountEmailTemplates.TemporaryPassword(secret),
                 ct
             );
         }
@@ -272,6 +234,7 @@ public sealed class AccountEmailSecurity(
             await db.SaveChangesAsync(CancellationToken.None);
             throw;
         }
+        return new EmailRequestResult(null, 60);
     }
 
     public async Task<string?> TemporaryLogin(

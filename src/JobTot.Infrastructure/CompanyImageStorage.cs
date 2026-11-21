@@ -1,12 +1,19 @@
-namespace JobTot.Api;
+using JobTot.Application.Storage;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+namespace JobTot.Infrastructure;
 
 public sealed class CompanyImageStorage(
     IWebHostEnvironment environment,
     IConfiguration configuration
-)
+) : ICompanyImageStorage
 {
     public const string UrlPrefix = "/uploads/companies/";
-    public string DirectoryPath { get; } =
+    public string DirectoryPath
+    {
+        get;
+    } =
         Path.GetFullPath(
             configuration["Media:CompanyDirectory"]
                 ?? Path.Combine(

@@ -1,3 +1,4 @@
+using JobTot.Infrastructure;
 namespace JobTot.Api;
 
 public sealed class RequestCancellationMiddleware(RequestDelegate next)

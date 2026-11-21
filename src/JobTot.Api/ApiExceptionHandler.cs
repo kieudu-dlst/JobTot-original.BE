@@ -1,13 +1,14 @@
+using JobTot.Infrastructure;
 using JobTot.Application;
 using JobTot.Application.Authentication;
 using JobTot.Application.Profiles;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using JobTot.Application.Persistence;
 
 namespace JobTot.Api;
 
-public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : IExceptionHandler
+public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger, IDataFailureClassifier failures) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(
         HttpContext context,
@@ -37,7 +38,7 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : I
                 409,
                 "Job is closed"
             ),
-            DbUpdateConcurrencyException => (409, "Data changed; reload and retry"),
+            Exception failure when failures.IsConcurrency(failure) => (409, "Data changed; reload and retry"),
             _ => (500, "An unexpected error occurred"),
         };
         if (status == 500)

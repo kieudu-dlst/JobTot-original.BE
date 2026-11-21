@@ -30,6 +30,8 @@ var media = Path.Combine(root, ".artifacts/cv-decoration-checks/media", Guid.New
 builder.Configuration["Media:CvDecorationDirectory"] = media;
 builder.Services.AddSingleton(db);
 builder.Services.AddScoped<ICvDecorationStorage, CvDecorationStorage>();
+builder.Services.AddScoped<JobTot.Application.Cvs.CvDecorationService>();
+builder.Services.AddSingleton<JobTot.Application.Persistence.IDataFailureClassifier, DataFailureClassifier>();
 builder.Services.AddControllers().AddApplicationPart(typeof(CvDecorationImagesController).Assembly);
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
