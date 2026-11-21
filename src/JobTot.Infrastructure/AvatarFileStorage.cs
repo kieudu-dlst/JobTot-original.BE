@@ -1,13 +1,20 @@
-namespace JobTot.Api;
+using JobTot.Application.Storage;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+namespace JobTot.Infrastructure;
 
 public sealed class AvatarFileStorage(
     IWebHostEnvironment environment,
     IConfiguration configuration,
     ILogger<AvatarFileStorage> logger
-)
+) : IAvatarStorage
 {
     public const string UrlPrefix = "/uploads/avatars/";
-    public string DirectoryPath { get; } =
+    public string DirectoryPath
+    {
+        get;
+    } =
         Path.GetFullPath(
             configuration["Media:AvatarDirectory"]
                 ?? Path.Combine(

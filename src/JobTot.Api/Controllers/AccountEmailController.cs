@@ -16,7 +16,26 @@ public sealed class AccountEmailController(AccountEmailSecurity security) : Cont
         string role,
         EmailInput input,
         CancellationToken ct
-    ) => Ok(new { challengeId = await security.RequestVerification(input.Email, Role(role), ct) });
+    )
+    {
+        var result = await security.RequestVerification(input.Email, Role(role), ct);
+        if (result.RateLimited)
+            return EmailCooldown(this, result.RetryAfterSeconds);
+        return Ok(new
+        {
+            challengeId = result.ChallengeId,
+            retryAfterSeconds = result.RetryAfterSeconds
+        });
+    }
+
+    internal static ObjectResult EmailCooldown(ControllerBase controller, int seconds)
+    {
+        controller.Response.Headers["Retry-After"] = seconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        return controller.Problem(statusCode: StatusCodes.Status429TooManyRequests,
+            title: "Chưa thể gửi lại email",
+            detail: $"Vui lòng đợi {seconds} giây trước khi yêu cầu email mới.",
+            extensions: new Dictionary<string, object?> { ["retryAfterSeconds"] = seconds });
+    }
 
     [HttpPost("verify")]
     public async Task<IActionResult> Verify(string role, VerifyInput input, CancellationToken ct)
@@ -34,15 +53,16 @@ public sealed class AccountEmailController(AccountEmailSecurity security) : Cont
                 title: "Xác thực email",
                 detail: result.Error
             );
-        return Ok(new { verificationToken = result.Token });
+        return Ok(new
+        {
+            verificationToken = result.Token
+        });
     }
 
     [HttpPost("change-temporary-password")]
     public async Task<IActionResult> Change(string role, ChangeInput input, CancellationToken ct)
     {
-        if (input.Password != input.ConfirmPassword)
-            return BadRequest(new { detail = "Mật khẩu xác nhận không trùng khớp." });
-        await security.ChangeTemporaryPassword(Role(role), input.Token, input.Password, ct);
+        await security.ChangeTemporaryPassword(Role(role), input.Token, input.Password, input.ConfirmPassword, ct);
         return NoContent();
     }
 

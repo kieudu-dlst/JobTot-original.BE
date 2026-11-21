@@ -1,20 +1,13 @@
 using System.Text.Json;
 using JobTot.Application.Profiles;
-using JobTot.Infrastructure.Persistence;
-using Microsoft.EntityFrameworkCore;
+namespace JobTot.Application.Storage;
 
-namespace JobTot.Api;
-
-public static class AvatarMigration
+public sealed class AvatarMigration(IRecruitmentData db, IAvatarStorage storage)
 {
-    public static async Task<int> RunAsync(
-        RecruitmentDbContext db,
-        AvatarFileStorage storage,
-        CancellationToken ct
-    )
+    public async Task<int> RunAsync(CancellationToken ct)
     {
         var ids = await db
-            .CandidateProfileRecords.AsNoTracking()
+            .CandidateProfileRecords.ReadOnly()
             .Where(p => p.DetailsJson != null && p.DetailsJson.Contains("data:image/"))
             .Select(p => p.Id)
             .ToListAsync(ct);
@@ -34,7 +27,7 @@ public static class AvatarMigration
                 && avatar?.StartsWith("data:image/jpeg;base64,", StringComparison.Ordinal) != true
             )
             {
-                db.ChangeTracker.Clear();
+                db.Reset();
                 continue;
             }
             var content = Convert.FromBase64String(avatar![(avatar!.IndexOf(',') + 1)..]);
@@ -42,7 +35,7 @@ public static class AvatarMigration
             profile.DetailsJson = JsonSerializer.Serialize(document);
             await db.SaveChangesAsync(ct);
             migrated++;
-            db.ChangeTracker.Clear();
+            db.Reset();
         }
         return migrated;
     }

@@ -1,6 +1,6 @@
 using Microsoft.Data.SqlClient;
 
-namespace JobTot.Api;
+namespace JobTot.Infrastructure;
 
 public static class RequestCancellation
 {

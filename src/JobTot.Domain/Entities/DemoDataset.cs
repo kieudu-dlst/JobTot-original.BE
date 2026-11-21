@@ -1,4 +1,4 @@
-namespace JobTot.Infrastructure.Persistence;
+namespace JobTot.Domain.Entities;
 
 public sealed class DemoDataset
 {

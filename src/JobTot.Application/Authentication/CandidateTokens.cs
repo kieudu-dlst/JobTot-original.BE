@@ -1,22 +1,16 @@
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using JobTot.Application.Authentication;
 using JobTot.Domain.Entities;
 using JobTot.Domain.Enums;
-using JobTot.Infrastructure.Persistence;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
+namespace JobTot.Application.Authentication;
 
-namespace JobTot.Api;
-
-public sealed record CandidateJwtSettings(string Issuer, string Audience, SymmetricSecurityKey Key);
 
 public sealed class CandidateTokens(
-    RecruitmentDbContext db,
+    IRecruitmentData db,
     CandidateAuthService accounts,
-    CandidateJwtSettings settings
+    IAccessTokenIssuer issuer
 )
 {
     public async Task<CandidateSessionDto> CreateAsync(
@@ -115,16 +109,16 @@ public sealed class CandidateTokens(
             {
                 await db.SaveChangesAsync(ct);
             }
-            catch (DbUpdateConcurrencyException)
+            catch (DataConcurrencyException)
             {
-                db.ChangeTracker.Clear();
+                db.Reset();
                 await RevokeAsync(id, ct);
                 return null;
             }
-            catch (DbUpdateException)
+            catch (DataWriteException)
             {
                 // An insert of the consumed hash may report a duplicate before the version check.
-                db.ChangeTracker.Clear();
+                db.Reset();
                 if (
                     !await db.UsedCandidateRefreshTokens.AnyAsync(
                         x => x.SessionId == id && x.TokenHash == hash,
@@ -203,16 +197,16 @@ public sealed class CandidateTokens(
         {
             if (
                 !Guid.TryParse(
-                    principal.FindFirstValue(ClaimTypes.NameIdentifier),
+                    principal.FindFirst(ClaimTypes.NameIdentifier)?.Value,
                     out var accountId
-                ) || !Guid.TryParse(principal.FindFirstValue("sid"), out var sessionId)
+                ) || !Guid.TryParse(principal.FindFirst("sid")?.Value, out var sessionId)
             )
                 return false;
             var now = DateTimeOffset.UtcNow;
             // Authentication must not materialize the profile JSON (including the avatar).
             var credentials = await (
-                from session in db.CandidateRefreshSessions.AsNoTracking()
-                join account in db.AccountRecords.AsNoTracking()
+                from session in db.CandidateRefreshSessions.ReadOnly()
+                join account in db.AccountRecords.ReadOnly()
                     on session.AccountId equals account.Id
                 where
                     session.Id == sessionId
@@ -224,7 +218,11 @@ public sealed class CandidateTokens(
                     && account.AccountStatus == CandidateAuthService.ActiveStatus
                     && account.CandidateProfile != null
                     && account.CandidateProfile.Status == EntityStatus.Active
-                select new { session.PasswordStamp, account.PasswordHash }
+                select new
+                {
+                    session.PasswordStamp,
+                    account.PasswordHash
+                }
             ).SingleOrDefaultAsync(ct);
             return credentials?.PasswordHash is { } hash
                 && credentials.PasswordStamp
@@ -251,7 +249,7 @@ public sealed class CandidateTokens(
             // Retry optimistic concurrency so logout cannot lose a race with rotation.
             while (true)
             {
-                db.ChangeTracker.Clear();
+                db.Reset();
                 var session = await db.CandidateRefreshSessions.SingleOrDefaultAsync(
                     x => x.Id == id,
                     ct
@@ -265,7 +263,7 @@ public sealed class CandidateTokens(
                     await db.SaveChangesAsync(ct);
                     return;
                 }
-                catch (DbUpdateConcurrencyException)
+                catch (DataConcurrencyException)
                 {
                     ct.ThrowIfCancellationRequested();
                 }
@@ -297,23 +295,10 @@ public sealed class CandidateTokens(
             var expiresAt = now.AddMinutes(15);
             if (expiresAt > session.ExpiresAt)
                 expiresAt = session.ExpiresAt;
-            var jwt = new JwtSecurityToken(
-                settings.Issuer,
-                settings.Audience,
-                [
-                    new(ClaimTypes.NameIdentifier, account.Id.ToString()),
-                    new(ClaimTypes.Name, account.FullName),
-                    new(ClaimTypes.Role, CandidateAuthService.CandidateRole),
-                    new("sid", session.Id.ToString()),
-                    new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                ],
-                now.UtcDateTime,
-                expiresAt.UtcDateTime,
-                new SigningCredentials(settings.Key, SecurityAlgorithms.HmacSha256)
-            );
+            var accessToken = issuer.Issue("Candidate", account.Id, session.Id, account.FullName, expiresAt);
             return new(
                 account,
-                new JwtSecurityTokenHandler().WriteToken(jwt),
+                accessToken,
                 refreshToken,
                 expiresAt,
                 session.ExpiresAt
@@ -337,7 +322,7 @@ public sealed class CandidateTokens(
     {
         try
         {
-            return $"{id:N}.{Base64UrlEncoder.Encode(RandomNumberGenerator.GetBytes(48))}";
+            return $"{id:N}.{ExternalUrls.Base64UrlEncode(RandomNumberGenerator.GetBytes(48))}";
         }
         catch (OperationCanceledException)
         {

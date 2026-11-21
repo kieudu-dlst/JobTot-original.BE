@@ -1,14 +1,11 @@
 using System.Text.Json;
 using JobTot.Domain.Enums;
-using JobTot.Infrastructure.Persistence;
-using Microsoft.EntityFrameworkCore;
-
-namespace JobTot.Api.Controllers;
+namespace JobTot.Application.Features;
 
 internal static class ChatAvatars
 {
     public static async Task<Dictionary<Guid, string?>> ReadAsync(
-        RecruitmentDbContext db,
+        IRecruitmentData db,
         IEnumerable<Guid> accountIds,
         CancellationToken ct
     )
@@ -18,7 +15,7 @@ internal static class ChatAvatars
         if (ids.Length == 0)
             return urls;
         var candidates = await db
-            .CandidateProfileRecords.AsNoTracking()
+            .CandidateProfileRecords.ReadOnly()
             .Where(p =>
                 ids.Contains(p.AccountId)
                 && p.Status == EntityStatus.Active
@@ -30,7 +27,7 @@ internal static class ChatAvatars
             urls[candidate.AccountId] = CandidateAvatar(candidate.DetailsJson);
 
         var recruiters = await db
-            .RecruiterProfileRecords.AsNoTracking()
+            .RecruiterProfileRecords.ReadOnly()
             .Where(p =>
                 ids.Contains(p.AccountId)
                 && p.Account.AccountType == "Employer"
@@ -53,7 +50,7 @@ internal static class ChatAvatars
             .ToListAsync(ct);
         foreach (var recruiter in recruiters)
             if (!urls.ContainsKey(recruiter.AccountId))
-                urls[recruiter.AccountId] = EmployerCompanyController
+                urls[recruiter.AccountId] = EmployerCompanyService
                     .ReadBrand(recruiter.Culture, recruiter.LogoUrl, null)
                     .LogoUrl;
         return urls;

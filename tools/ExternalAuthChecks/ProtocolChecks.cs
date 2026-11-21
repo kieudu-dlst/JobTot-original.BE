@@ -4,6 +4,8 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text.Json;
 using JobTot.Api;
+using JobTot.Application.Authentication;
+using JobTot.Infrastructure;
 using Microsoft.IdentityModel.Tokens;
 
 public static class ProtocolChecks
@@ -32,7 +34,7 @@ public static class ProtocolChecks
                     await client.Exchange(client.Provider(name, role), "code", "https://jobtot.example/callback", "verifier", "nonce", default);
                     check(false, $"{role} {name}: rejects invalid {fault}");
                 }
-                catch (SecurityTokenException) { check(true, $"{role} {name}: rejects invalid {fault}"); }
+                catch (ExternalIdentityException) { check(true, $"{role} {name}: rejects invalid {fault}"); }
             }
         }
         try
