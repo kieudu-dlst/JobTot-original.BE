@@ -65,6 +65,7 @@ public static class FeatureChecks
         var typing = await Read(await employerClient.GetAsync($"/api/employer/messages/{conversationId}/typing"), "peer typing state remains readable");
         check(typing.GetProperty("isTyping").GetBoolean(), "typing expiry survives the cache adapter");
         await Read(await candidateClient.GetAsync("/api/candidate/header"), "candidate header aggregation remains available");
+        await WebSocketChecks.Run(candidateClient, employerClient, conversationId, check);
         using var invalidPdf = new MultipartFormDataContent();
         invalidPdf.Add(new ByteArrayContent("not a PDF"u8.ToArray()), "file", "fake.pdf");
         check((await candidateClient.PostAsync("/api/candidate/profile/cvs", invalidPdf)).StatusCode == HttpStatusCode.BadRequest, "application upload validation rejects a fake PDF");

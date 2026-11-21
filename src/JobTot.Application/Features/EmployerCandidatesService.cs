@@ -489,6 +489,7 @@ public sealed class EmployerCandidatesService(
                 projects = document?.Projects ?? [],
                 certificates = document?.Certificates ?? [],
                 name = p.Account.FullName,
+                accountId = p.AccountId,
                 email = revealContact ? p.Account.Email : null,
                 phone = revealContact ? p.Account.Phone : null,
                 p.Headline,

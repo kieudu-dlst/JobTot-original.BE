@@ -28,8 +28,10 @@ builder.Configuration["ExternalAuth:WebOrigin"] = origin;
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<JobTot.Application.Execution.ICurrentActor, CurrentActor>();
 builder.Services.AddApplication();
+builder.Services.AddSingleton<ChatSockets>();
+builder.Services.AddSingleton<JobTot.Application.Features.IChatEvents>(sp => sp.GetRequiredService<ChatSockets>());
 builder.Services.AddInfrastructureAdapters();
-builder.Services.AddControllers().AddApplicationPart(typeof(ExternalAuthController).Assembly);
+builder.Services.AddControllers(options => options.Filters.Add<RequestCancellationFilter>()).AddApplicationPart(typeof(ExternalAuthController).Assembly);
 builder.Services.AddDbContext<RecruitmentDbContext>(options => options.UseInMemoryDatabase("external-auth-checks"));
 builder.Services.AddSingleton<IAccountPasswordHasher, AccountPasswordHasher>();
 builder.Services.AddScoped<ICandidateAuthRepository, CandidateAuthRepository>();
@@ -51,6 +53,7 @@ builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(output, "keys")));
 await using var app = builder.Build();
+app.UseWebSockets();
 app.UseExceptionHandler();
 // Keep the existing auth rate limiter out of this fixture host: the scenario suite
 // intentionally exceeds ten requests/minute. Production still enables its named policy.

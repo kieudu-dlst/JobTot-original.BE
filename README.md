@@ -1,5 +1,15 @@
 # Khởi tạo database Backend
 
+## Chat qua WebSocket
+
+Frontend dùng WebSocket thuần tại `/api/candidate/messages/socket` hoặc `/api/employer/messages/socket`, không còn polling tin nhắn và typing. Gọi `POST .../messages/socket-ticket` với bearer token để lấy ticket một lần, hết hạn sau 30 giây; ticket chỉ dùng để nâng cấp kết nối. Kết nối đóng khi access token hết hạn; frontend kết nối lại, lấy ticket qua cơ chế refresh token hiện có và tải bù lịch sử qua REST.
+
+Các lệnh socket `send`, `read`, `typing` đều đi qua Application, kiểm tra phiên và quyền hội thoại. Server chỉ phát sự kiện đến các kết nối của hai thành viên; tin nhắn được lưu trước khi phát. Gửi lại giữ nguyên `clientMessageId` để không tạo bản trùng. REST vẫn hỗ trợ tải lịch sử, tìm người, tạo hội thoại và tương thích client cũ.
+
+Proxy/IIS phải cho phép WebSocket Upgrade, HTTPS sử dụng `wss://`. Registry kết nối và ticket hiện nằm trong bộ nhớ của một API instance. Nếu chạy nhiều instance cần bổ sung distributed ticket store và pub/sub/backplane; chỉ sticky session không đủ để chuyển tin giữa các instance. Không cần migration database.
+
+Kiểm tra kết nối WebSocket thật: `dotnet run --project tools/ExternalAuthChecks -- --root .. --architecture-only`. Kiểm tra client: từ FE chạy `node --test scripts/chat-socket.test.mjs`.
+
 ## Ranh giới Clean Architecture
 
 - `JobTot.Api`: route, authentication/authorization HTTP, model binding, cookie, header và chuyển kết quả use case thành HTTP response. Controller gọi service của Application, không dùng DbContext, EF Core hoặc SQL.

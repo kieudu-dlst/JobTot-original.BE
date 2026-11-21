@@ -17,28 +17,31 @@ internal sealed class DataQueryProvider(RecruitmentDbContext db) : IDataQueryPro
     public object? Execute(Expression expression) => Provider.Execute(Translate(expression));
     public TResult Execute<TResult>(Expression expression) => Provider.Execute<TResult>(Translate(expression));
 
-    private static async Task<T> Run<T>(Func<Task<T>> action, CancellationToken ct)
+    private static Task<T> Run<T>(Func<Task<T>> action, CancellationToken ct) =>
+        ct.IsCancellationRequested ? Task.FromCanceled<T>(ct) : RunCore(action, ct);
+
+    private static async Task<T> RunCore<T>(Func<Task<T>> action, CancellationToken ct)
     {
-        ct.ThrowIfCancellationRequested();
         try
         {
             return await action();
         }
         catch (SqlException e) when (ct.IsCancellationRequested && e.Errors.Cast<SqlError>().Any(x => x.Message.Contains("Operation cancelled by user", StringComparison.OrdinalIgnoreCase)))
         {
-            throw new DataOperationCanceledException(e);
+            throw new DataOperationCanceledException(e, ct);
         }
     }
     public Task<TResult> ExecuteAsync<TResult>(Expression expression, CancellationToken ct) =>
         Run(() => ((IAsyncQueryProvider)Provider).ExecuteAsync<Task<TResult>>(Translate(expression), ct), ct);
     public Task<List<T>> ListAsync<T>(Expression expression, CancellationToken ct) => Run(() => EntityFrameworkQueryableExtensions.ToListAsync(Read<T>(expression), ct), ct);
     public Task<int> UpdateAsync<T>(Expression query, Expression<Func<Changes<T>, Changes<T>>> changes, CancellationToken ct) where T : class
+        => Run(() =>
     {
         var parameter = Expression.Parameter(typeof(SetPropertyCalls<T>), changes.Parameters[0].Name);
         var body = new ChangeTranslator<T>(changes.Parameters[0], parameter).Visit(changes.Body)!;
         var setters = Expression.Lambda<Func<SetPropertyCalls<T>, SetPropertyCalls<T>>>(body, parameter);
-        return Run(() => Read<T>(query).ExecuteUpdateAsync(setters, ct), ct);
-    }
+        return Read<T>(query).ExecuteUpdateAsync(setters, ct);
+    }, ct);
     private sealed class DataQuery<T>(DataQueryProvider provider, Expression expression) : IOrderedQueryable<T>
     {
         public Type ElementType => typeof(T);

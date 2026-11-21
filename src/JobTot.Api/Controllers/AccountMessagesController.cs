@@ -8,8 +8,30 @@ namespace JobTot.Api.Controllers;
 [ApiController, Route("api/candidate/messages"), Route("api/employer/messages")]
 [Authorize(AuthenticationSchemes = CandidateAuthentication.Scheme + "," + EmployerAuthentication.Scheme)]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-public sealed class AccountMessagesController(AccountMessagesService service) : ApplicationController
+public sealed class AccountMessagesController(AccountMessagesService service, ChatSockets sockets) : ApplicationController
 {
+    [HttpPost("socket-ticket")]
+    public IActionResult Ticket() => Ok(new { ticket = sockets.Ticket(User) });
+
+    [AllowAnonymous, HttpGet("socket")]
+    public async Task Socket([FromQuery] string? ticket)
+    {
+        var user = sockets.Consume(ticket);
+        var role = Request.Path.StartsWithSegments("/api/employer") ? "Employer" : "Candidate";
+        if (user is null || !user.IsInRole(role))
+        {
+            Response.StatusCode = 401;
+            return;
+        }
+        if (!HttpContext.WebSockets.IsWebSocketRequest)
+        {
+            Response.StatusCode = 400;
+            return;
+        }
+        HttpContext.User = user;
+        await sockets.Run(HttpContext, user);
+    }
+
     [HttpGet("people")]
     public async Task<IActionResult> People([FromQuery] string? q, CancellationToken ct) =>
         ToAction(await service.People(q, ct));
