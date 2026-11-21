@@ -1,75 +1,18 @@
-using System.Net;
-using System.Net.Mail;
 using System.Security.Cryptography;
 using System.Text.Json;
 using JobTot.Application.Authentication;
-using Microsoft.AspNetCore.DataProtection;
+namespace JobTot.Application.Authentication;
 
-namespace JobTot.Api;
-
-public interface IRecoveryEmailSender
-{
-    Task SendAsync(string email, string link, CancellationToken ct);
-}
-
-public sealed class SmtpRecoveryEmailSender(IConfiguration configuration) : IRecoveryEmailSender
-{
-    public async Task SendAsync(string email, string link, CancellationToken ct)
-    {
-        try
-        {
-            var settings = configuration.GetSection("PasswordRecovery:Smtp");
-            var host =
-                settings["Host"]
-                ?? throw new InvalidOperationException("Password recovery SMTP is not configured.");
-            var from =
-                settings["From"]
-                ?? throw new InvalidOperationException(
-                    "Password recovery sender is not configured."
-                );
-            using var client = new SmtpClient(host, settings.GetValue("Port", 587))
-            {
-                EnableSsl = settings.GetValue("EnableSsl", true),
-                UseDefaultCredentials = false,
-            };
-            if (!string.IsNullOrWhiteSpace(settings["Username"]))
-                client.Credentials = new NetworkCredential(
-                    settings["Username"],
-                    settings["Password"]
-                );
-            using var message = new MailMessage(from, email)
-            {
-                Subject = "Khôi phục mật khẩu Job Tốt",
-                Body =
-                    $"Bạn đã yêu cầu đặt lại mật khẩu Job Tốt. Mở liên kết sau trong 30 phút:\n\n{link}\n\nNếu không gửi yêu cầu này, bạn có thể bỏ qua email.",
-            };
-            await client.SendMailAsync(message, ct);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            global::JobTot.Application.ExceptionDiagnostics.Record(
-                exception,
-                "SmtpRecoveryEmailSender.SendAsync"
-            );
-            throw;
-        }
-    }
-}
-
-public sealed class PasswordRecovery(
-    ICandidateAuthRepository repository,
+public sealed class EmployerPasswordRecovery(
+    IEmployerAuthRepository repository,
     IAccountPasswordHasher passwords,
-    IDataProtectionProvider protection,
+    ISecretProtection protection,
     IRecoveryEmailSender sender,
-    IConfiguration configuration
+    IAppConfiguration configuration
 )
 {
-    private readonly IDataProtector protector = protection.CreateProtector(
-        "JobTot.Candidate.PasswordReset.v1"
+    private readonly ISecretProtector protector = protection.CreateProtector(
+        "JobTot.Employer.PasswordReset.v1"
     );
 
     private sealed record ResetTicket(
@@ -98,7 +41,7 @@ public sealed class PasswordRecovery(
             );
             if (
                 account is null
-                || !CandidateAuthService.IsActiveCandidate(account)
+                || !EmployerAuthService.IsActiveEmployer(account)
                 || account.PasswordHash is null
             )
                 return;
@@ -113,7 +56,7 @@ public sealed class PasswordRecovery(
             );
             await sender.SendAsync(
                 account.Email!,
-                $"{url!.TrimEnd('/')}/reset-password#token={Uri.EscapeDataString(token)}",
+                $"{url!.TrimEnd('/')}/reset-password?role=employer#token={Uri.EscapeDataString(token)}",
                 ct
             );
         }
@@ -125,7 +68,7 @@ public sealed class PasswordRecovery(
         {
             global::JobTot.Application.ExceptionDiagnostics.Record(
                 exception,
-                "PasswordRecovery.RequestAsync"
+                "EmployerPasswordRecovery.RequestAsync"
             );
             throw;
         }
@@ -153,7 +96,7 @@ public sealed class PasswordRecovery(
             var account = await repository.GetAsync(ticket.AccountId, ct);
             if (
                 account is null
-                || !CandidateAuthService.IsActiveCandidate(account)
+                || !EmployerAuthService.IsActiveEmployer(account)
                 || account.PasswordHash != ticket.PasswordHash
             )
                 throw InvalidLink();
@@ -175,7 +118,7 @@ public sealed class PasswordRecovery(
         {
             global::JobTot.Application.ExceptionDiagnostics.Record(
                 exception,
-                "PasswordRecovery.ResetAsync"
+                "EmployerPasswordRecovery.ResetAsync"
             );
             throw;
         }
@@ -197,7 +140,7 @@ public sealed class PasswordRecovery(
         {
             global::JobTot.Application.ExceptionDiagnostics.Record(
                 exception,
-                "PasswordRecovery.InvalidLink"
+                "EmployerPasswordRecovery.InvalidLink"
             );
             throw;
         }

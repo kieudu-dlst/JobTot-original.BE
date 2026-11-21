@@ -25,6 +25,10 @@ builder.Logging.ClearProviders();
 builder.WebHost.UseUrls(origin);
 builder.Configuration["ExternalAuth:ApiOrigin"] = origin;
 builder.Configuration["ExternalAuth:WebOrigin"] = origin;
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<JobTot.Application.Execution.ICurrentActor, CurrentActor>();
+builder.Services.AddApplication();
+builder.Services.AddInfrastructureAdapters();
 builder.Services.AddControllers().AddApplicationPart(typeof(ExternalAuthController).Assembly);
 builder.Services.AddDbContext<RecruitmentDbContext>(options => options.UseInMemoryDatabase("external-auth-checks"));
 builder.Services.AddSingleton<IAccountPasswordHasher, AccountPasswordHasher>();
@@ -34,6 +38,7 @@ builder.Services.AddScoped<CandidateAuthService>();
 builder.Services.AddScoped<EmployerAuthService>();
 builder.Services.AddCandidateAuthentication(builder.Configuration, true);
 builder.Services.AddEmployerAuthentication();
+builder.Services.AddAdminAuthentication();
 builder.Services.AddScoped<ExternalAuthService>();
 builder.Services.AddSingleton<IExternalIdentityClient, FakeIdentityClient>();
 builder.Services.AddScoped<AccountEmailSecurity>();
@@ -89,6 +94,13 @@ void Check(bool value, string name)
         throw new InvalidOperationException(name);
     checks.Add(name);
     Console.WriteLine($"PASS {name}");
+}
+if (args.Contains("--architecture-only"))
+{
+    await ArchitectureChecks.Run(app.Services, origin, Check);
+    Console.WriteLine($"PASS {checks.Count} architecture checks");
+    await app.StopAsync();
+    return;
 }
 using var handler = new HttpClientHandler { AllowAutoRedirect = false, CookieContainer = new CookieContainer() };
 using var client = new HttpClient(handler) { BaseAddress = new Uri(origin) };
@@ -180,7 +192,7 @@ using (var scope = app.Services.CreateScope())
 {
     var security = scope.ServiceProvider.GetRequiredService<AccountEmailSecurity>();
     var challenge = await security.RequestVerification("added@checks.example", "Candidate", default);
-    var proof = await security.Verify(challenge, "added@checks.example", "Candidate", app.Services.GetRequiredService<TestMail>().Codes["added@checks.example"], default);
+    var proof = await security.Verify(challenge.ChallengeId!.Value, "added@checks.example", "Candidate", app.Services.GetRequiredService<TestMail>().Codes["added@checks.example"], default);
     await Json(await client.PostAsJsonAsync($"/api/candidate/auth/external/flows/{missing.Id}/register", Registration("added@checks.example", proof.Token)));
 }
 var cancel = await Start("candidate", "google", "login", "unused", "access_denied");
@@ -263,6 +275,17 @@ foreach (var provider in new[] { "Facebook", "LinkedIn" })
     legacyNumber++;
     var email = $"legacy.{role}.{provider.ToLowerInvariant()}@checks.example";
     var requested = await Json(await client.PostAsJsonAsync($"/api/{role}/auth/email/request", new { email }));
+    var cooldownResponse = await client.PostAsJsonAsync($"/api/{role}/auth/email/request", new { email });
+    var cooldown = await Json(cooldownResponse, 429);
+    Check(cooldown.GetProperty("retryAfterSeconds").GetInt32() is > 0 and <= 60 &&
+        cooldownResponse.Headers.RetryAfter?.Delta?.TotalSeconds > 0,
+        $"{role}: OTP resend reports the remaining cooldown and Retry-After header");
+    using (var scope = app.Services.CreateScope())
+    {
+        var security = scope.ServiceProvider.GetRequiredService<AccountEmailSecurity>();
+        var limited = await security.RequestVerification(email, role == "candidate" ? "Candidate" : "Employer", default);
+        Check(limited.RateLimited && limited.ChallengeId is null, $"{role}: OTP cooldown returns without throwing or issuing another code");
+    }
     var verified = await Json(await client.PostAsJsonAsync($"/api/{role}/auth/email/verify", new
     {
         email,
@@ -289,6 +312,26 @@ foreach (var provider in new[] { "Facebook", "LinkedIn" })
     var profileId = registered.GetProperty("account").GetProperty(profileKey).GetGuid();
     var passwordLogin = new { email, emailOrPhone = email, password = "Password123!" };
     await Json(await client.PostAsJsonAsync($"/api/{role}/auth/login", passwordLogin));
+    var retryFlow = await Start(role, "google", "login", $"legacy-{role}-{provider.ToLowerInvariant()}");
+    using (var scope = app.Services.CreateScope())
+    {
+        var service = scope.ServiceProvider.GetRequiredService<ExternalAuthService>();
+        var rejected = await service.ConfirmLink(role, retryFlow.Id, retryFlow.Cookie,
+            new ExternalLinkRequest { Identity = email, Password = "wrong", ConfirmLink = true }, default);
+        Check(rejected.Session is null && rejected.ChangeToken is null,
+            $"{role}: wrong linking password returns a failure without throwing");
+    }
+    var wrongPassword = await Json(await client.PostAsJsonAsync($"/api/{role}/auth/external/flows/{retryFlow.Id}/link",
+        new { identity = email, password = "wrong", confirmLink = true }), 401);
+    Check(wrongPassword.GetProperty("detail").GetString()!.Contains("không đúng") &&
+        !wrongPassword.TryGetProperty("accessToken", out _), $"{role}: wrong linking password returns a readable error without a session");
+    var pendingLink = await Json(await client.GetAsync($"/api/{role}/auth/external/flows/{retryFlow.Id}"));
+    Check(pendingLink.GetProperty("stage").GetString() == "ready" && !pendingLink.GetProperty("linked").GetBoolean(),
+        $"{role}: wrong password leaves the Google flow ready and unlinked");
+    var retriedSession = await Json(await client.PostAsJsonAsync($"/api/{role}/auth/external/flows/{retryFlow.Id}/link",
+        new { identity = email, password = "Password123!", confirmLink = true }));
+    Check(retriedSession.GetProperty("account").GetProperty("id").GetGuid() == accountId,
+        $"{role}: correct password completes the same Google linking flow after a failed attempt");
     var browserSecret = ExternalAuthService.NewSecret();
     var legacyFlow = new ExternalAuthFlow
     {
@@ -317,6 +360,9 @@ foreach (var provider in new[] { "Facebook", "LinkedIn" })
     await Json(await client.PostAsJsonAsync($"/api/{role}/auth/external/flows/{legacyFlow.Id}/register", Registration(email, employer: role == "employer")), 400);
     await Json(await client.PostAsJsonAsync($"/api/{role}/auth/external/flows/{legacyFlow.Id}/session", new { }), 400);
     await Json(await client.PostAsJsonAsync($"/api/{role}/auth/forgot-password", new { email }));
+    var recoveryCooldown = await Json(await client.PostAsJsonAsync($"/api/{role}/auth/forgot-password", new { email }), 429);
+    Check(recoveryCooldown.GetProperty("retryAfterSeconds").GetInt32() is > 0 and <= 60,
+        $"{role}: temporary-password cooldown reports remaining seconds");
     var temporaryPassword = app.Services.GetRequiredService<TestMail>().TemporaryPasswords[email];
     var change = await Json(await client.PostAsJsonAsync($"/api/{role}/auth/login", new
     {
@@ -347,6 +393,21 @@ foreach (var provider in new[] { "Facebook", "LinkedIn" })
             $"{role} legacy {provider}: original provider link preserved");
     }
 }
+var otpPreview = AccountEmailTemplates.Verification("659264");
+var passwordPreview = AccountEmailTemplates.TemporaryPassword("A1B2C3D4E5F60718293A4B5Ca!");
+Check(otpPreview.Text.Contains("659264") && otpPreview.Html.Contains("659264") &&
+    WebUtility.HtmlDecode(otpPreview.Html).Contains("1 phút"), "OTP email HTML and plain-text versions preserve the code and one-minute expiry");
+Check(passwordPreview.Text.Contains("A1B2C3D4E5F60718293A4B5Ca!") &&
+    passwordPreview.Html.Contains("A1B2C3D4E5F60718293A4B5Ca!") &&
+    WebUtility.HtmlDecode(passwordPreview.Html).Contains("10 phút"), "temporary-password email preserves the password and ten-minute expiry");
+var escapedPreview = AccountEmailTemplates.Verification("<script>alert('test')</script>");
+Check(!escapedPreview.Html.Contains("<script>") && escapedPreview.Html.Contains("&lt;script&gt;"),
+    "email templates escape dynamic HTML content");
+var emailPreviews = Path.Combine(root, ".artifacts/email-previews");
+Directory.CreateDirectory(emailPreviews);
+await File.WriteAllTextAsync(Path.Combine(emailPreviews, "otp.html"), otpPreview.Html);
+await File.WriteAllTextAsync(Path.Combine(emailPreviews, "temporary-password.html"), passwordPreview.Html);
+await ArchitectureChecks.Run(app.Services, origin, Check);
 await ProtocolChecks.Run(Check);
 await File.WriteAllTextAsync(Path.Combine(output, "backend-result.json"), JsonSerializer.Serialize(new { passed = true, checks, database = "isolated InMemory; no real account or database modified", providers = "fixtures, not live accounts" }, new JsonSerializerOptions { WriteIndented = true }));
 Console.WriteLine($"PASS {checks.Count} backend/protocol checks");
@@ -356,13 +417,13 @@ public sealed class FakeIdentityClient : IExternalIdentityClient
 {
     public ExternalProvider Provider(string provider, string role)
     {
-        var name = ExternalIdentityClient.AllowedProvider(provider, role);
+        var name = ExternalAuthPolicy.AllowedProvider(provider, role);
         return new(name, "checks", "checks", $"http://127.0.0.1:5199/checks/authorize/{provider}", "", "", "", "checks");
     }
     public Task<ExternalIdentity> Exchange(ExternalProvider provider, string code, string callback, string verifier, string nonce, CancellationToken ct)
     {
         if (code == "provider-error")
-            throw new Microsoft.IdentityModel.Tokens.SecurityTokenException("provider failure");
+            throw new ExternalIdentityException("provider failure", new Exception("fixture"));
         var email = code == "missing" ? null : code.StartsWith("duplicate", StringComparison.Ordinal) ? "duplicate@checks.example" : code.Replace("-alias", "").Replace('-', '.') + "@checks.example";
         return Task.FromResult(new ExternalIdentity(code, email, code == "missing" ? null : "Người dùng thử nghiệm", true));
     }
@@ -371,10 +432,10 @@ public sealed class TestMail : IAccountEmailSender, IRecoveryEmailSender
 {
     public System.Collections.Concurrent.ConcurrentDictionary<string, string> Codes { get; } = new();
     public System.Collections.Concurrent.ConcurrentDictionary<string, string> TemporaryPasswords { get; } = new();
-    public Task SendAsync(string email, string subject, string body, CancellationToken ct)
+    public Task SendAsync(string email, string subject, AccountEmailContent body, CancellationToken ct)
     {
-        Codes[email] = Regex.Match(body, @"\b\d{6}\b").Value;
-        var temporary = Regex.Match(body, @"Mật khẩu tạm của bạn: ([A-F0-9]{24}a!)");
+        Codes[email] = Regex.Match(body.Text, @"\b\d{6}\b").Value;
+        var temporary = Regex.Match(body.Text, @"Mật khẩu tạm của bạn: ([A-F0-9]{24}a!)");
         if (temporary.Success)
             TemporaryPasswords[email] = temporary.Groups[1].Value;
         return Task.CompletedTask;

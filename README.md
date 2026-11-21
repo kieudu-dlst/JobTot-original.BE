@@ -1,5 +1,27 @@
 # Khởi tạo database Backend
 
+## Ranh giới Clean Architecture
+
+- `JobTot.Api`: route, authentication/authorization HTTP, model binding, cookie, header và chuyển kết quả use case thành HTTP response. Controller gọi service của Application, không dùng DbContext, EF Core hoặc SQL.
+- `JobTot.Application`: nghiệp vụ, kiểm tra dữ liệu, quyền sở hữu, xử lý đồng thời, phiên đăng nhập và điều phối transaction; khai báo các interface cần dùng.
+- `JobTot.Infrastructure`: thực thi các interface bằng EF Core/SQL Server, SMTP, Google OAuth, Data Protection, JWT và lưu file.
+- `JobTot.Domain`: entity và quy tắc miền; không tham chiếu các tầng khác.
+
+Use case trả `UseCaseResult` với trạng thái nghiệp vụ; chỉ `ApplicationController` trong API ánh xạ trạng thái đó thành HTTP status, `ProblemDetails`, file tải xuống và header `Location`.
+
+Các repository hiện có được giữ qua interface trong Application. Những use case được tách từ controller dùng `IRecruitmentData` làm unit of work và các biểu thức LINQ làm query specification. `ReadOnly`, `With`, `ThenWith` và `UpdateAsync` chỉ mô tả truy vấn; `RecruitmentData`/`DataQueryProvider` trong Infrastructure chuyển chúng thành EF Core và thực thi. Không trả `DbSet`, `EntityEntry`, transaction của EF hoặc exception SQL qua ranh giới này. Application chỉ tham chiếu Domain và .NET, không cần ASP.NET Core hay EF Core.
+
+Kiểm tra ranh giới tầng và chạy kiểm tra hồi quy từ thư mục `BE`:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-clean-architecture.ps1
+dotnet build JobTot.sln
+dotnet run --project tools/ExternalAuthChecks -- --root .. --architecture-only
+dotnet run --project tools/ExternalAuthChecks -- --root ..
+```
+
+Bộ kiểm tra dùng database InMemory riêng và provider giả lập. Kiểm tra dịch query/update sang SQL Server chặn mở kết nối; không sửa database thật hoặc gửi email thật.
+
 ## Format C#
 
 Chạy từ thư mục `BE/JobTot`. CSharpier được ghim phiên bản trong manifest tool;

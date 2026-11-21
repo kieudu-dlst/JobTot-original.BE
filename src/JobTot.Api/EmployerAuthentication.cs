@@ -1,3 +1,4 @@
+using JobTot.Infrastructure;
 using JobTot.Application.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;

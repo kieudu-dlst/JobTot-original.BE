@@ -1,15 +1,24 @@
-namespace JobTot.Infrastructure.Persistence;
+namespace JobTot.Domain.Entities;
 
 public sealed class AccountNotificationRead
 {
-    public Guid AccountId { get; set; }
+    public Guid AccountId
+    {
+        get; set;
+    }
     public string NotificationId { get; set; } = "";
     public DateTimeOffset ReadAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
 public sealed class AccountMessageRead
 {
-    public Guid AccountId { get; set; }
-    public long MessageId { get; set; }
+    public Guid AccountId
+    {
+        get; set;
+    }
+    public long MessageId
+    {
+        get; set;
+    }
     public DateTimeOffset ReadAt { get; set; } = DateTimeOffset.UtcNow;
 }

@@ -11,9 +11,11 @@ namespace JobTot.Api.Controllers;
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public sealed class CandidateAuthController(
     CandidateAuthService service,
+    CandidateAccess access,
     CandidateTokens tokens,
     PasswordRecovery recovery,
     AccountEmailSecurity emailSecurity
+
 ) : ControllerBase
 {
     [HttpPost("register")]
@@ -27,14 +29,7 @@ public sealed class CandidateAuthController(
     {
         try
         {
-            await emailSecurity.RequireVerification(
-                request.EmailOrPhone,
-                "Candidate",
-                request.EmailVerificationToken,
-                ct
-            );
-            var account = await service.RegisterAsync(request, ct);
-            var session = await tokens.CreateAsync(account, rememberMe: false, ct);
+            var session = await access.RegisterAsync(request, ct);
             return CreatedAtAction(nameof(Me), session);
         }
         catch (OperationCanceledException)
@@ -61,28 +56,20 @@ public sealed class CandidateAuthController(
     {
         try
         {
-            var account = await service.LoginAsync(request, ct);
-            if (account is null)
-            {
-                var changeToken = await emailSecurity.TemporaryLogin(
-                    request.EmailOrPhone,
-                    "Candidate",
-                    request.Password,
-                    ct
-                );
-                if (changeToken != null)
-                    return StatusCode(
-                        428,
-                        new { detail = "Đặt mật khẩu mới để hoàn tất đăng nhập.", changeToken }
-                    );
-            }
-            if (account is null)
+            var result = await access.LoginAsync(request, ct);
+            if (result.ChangeToken is { } changeToken)
+                return StatusCode(428, new
+                {
+                    detail = "Đặt mật khẩu mới để hoàn tất đăng nhập.",
+                    changeToken
+                });
+            if (result.Session is null)
                 return Problem(
                     statusCode: StatusCodes.Status401Unauthorized,
                     title: "Đăng nhập không thành công",
                     detail: "Email/số điện thoại hoặc mật khẩu không đúng, hoặc tài khoản không khả dụng."
                 );
-            return Ok(await tokens.CreateAsync(account, request.RememberMe, ct));
+            return Ok(result.Session);
         }
         catch (OperationCanceledException)
         {
@@ -134,11 +121,14 @@ public sealed class CandidateAuthController(
     {
         try
         {
-            await emailSecurity.RequestTemporaryPassword(request.Email, "Candidate", ct);
+            var result = await emailSecurity.RequestTemporaryPassword(request.Email, "Candidate", ct);
+            if (result.RateLimited)
+                return AccountEmailController.EmailCooldown(this, result.RetryAfterSeconds);
             return Ok(
                 new
                 {
-                    message = "Nếu email liên kết với tài khoản khả dụng, bạn sẽ nhận được mật khẩu tạm có hiệu lực 30 phút.",
+                    message = "Nếu email liên kết với tài khoản khả dụng, bạn sẽ nhận được mật khẩu tạm có hiệu lực 10 phút.",
+                    retryAfterSeconds = result.RetryAfterSeconds,
                 }
             );
         }

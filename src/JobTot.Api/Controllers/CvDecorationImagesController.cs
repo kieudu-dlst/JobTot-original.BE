@@ -8,7 +8,7 @@ namespace JobTot.Api.Controllers;
 
 [ApiController]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-public sealed class CvDecorationImagesController(ICvDecorationStorage storage) : ControllerBase
+public sealed class CvDecorationImagesController(CvDecorationService service) : ControllerBase
 {
     private Guid AccountId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
     [Authorize(Policy = CandidateAuthentication.Policy)]
@@ -24,21 +24,15 @@ public sealed class CvDecorationImagesController(ICvDecorationStorage storage) :
     public Task<CvDecorationImage> UploadTemplate(Guid? id, [FromForm] UploadInput input, CancellationToken ct) =>
         Upload(id, true, input, ct);
 
-    private async Task<CvDecorationImage> Upload(Guid? id, bool template, UploadInput input, CancellationToken ct)
-    {
-        if (input.File.Length is <= 0 or > 2 * 1024 * 1024)
-            throw new ArgumentException("Mỗi ảnh trang trí tối đa 2 MB.");
-        using var buffer = new MemoryStream();
-        await input.File.CopyToAsync(buffer, ct);
-        return await storage.UploadAsync(AccountId, id, template, buffer.ToArray(), input.File.FileName,
-            input.File.ContentType, input.CurrentCount, ct);
-    }
+    private Task<CvDecorationImage> Upload(Guid? id, bool template, UploadInput input, CancellationToken ct) =>
+        service.UploadAsync(AccountId, id, template,
+            new UploadFile(input.File.Length, input.File.FileName, input.File.ContentType, input.File.CopyToAsync), input.CurrentCount, ct);
 
     [Authorize(Policy = CandidateAuthentication.Policy)]
     [HttpDelete("api/candidate/online-cvs/{id:guid}/decoration-images/{imageId:guid}")]
     public async Task<IActionResult> DeleteCandidate(Guid id, Guid imageId, CancellationToken ct)
     {
-        await storage.DeleteUploadAsync(AccountId, id, false, imageId, ct);
+        await service.DeleteAsync(AccountId, id, false, imageId, ct);
         return NoContent();
     }
     [Authorize(Policy = AdminAuthentication.Policy)]
@@ -46,7 +40,7 @@ public sealed class CvDecorationImagesController(ICvDecorationStorage storage) :
     [HttpDelete("api/admin/cv-templates/{id:guid}/decoration-images/{imageId:guid}")]
     public async Task<IActionResult> DeleteTemplate(Guid? id, Guid imageId, CancellationToken ct)
     {
-        await storage.DeleteUploadAsync(AccountId, id, true, imageId, ct);
+        await service.DeleteAsync(AccountId, id, true, imageId, ct);
         return NoContent();
     }
     public sealed class UploadInput

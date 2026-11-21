@@ -21,7 +21,7 @@ public sealed class ExternalAuthController(ExternalAuthService service) : Contro
     [HttpPost("{provider}/start"), EnableRateLimiting(CandidateAuthentication.RateLimitPolicy)]
     public async Task<IActionResult> Start(string role, string provider, StartRequest request, CancellationToken ct)
     {
-        ExternalIdentityClient.AllowedProvider(provider, role);
+        ExternalAuthPolicy.AllowedProvider(provider, role);
         RequireIntent();
         var (row, secret, url) = await service.Start(role, provider, request.Mode, request.ReturnTo, ct);
         Response.Cookies.Append(ExternalAuthService.CookieName(row.Id), secret, new CookieOptions
@@ -43,7 +43,7 @@ public sealed class ExternalAuthController(ExternalAuthService service) : Contro
     public async Task<IActionResult> Callback(string role, string provider, string? state, string? code,
         string? error, CancellationToken ct)
     {
-        ExternalIdentityClient.AllowedProvider(provider, role);
+        ExternalAuthPolicy.AllowedProvider(provider, role);
         Response.Headers["Referrer-Policy"] = "no-referrer";
         var id = state?.Split('.').FirstOrDefault();
         if (!Guid.TryParseExact(id, "N", out var flowId))
@@ -53,7 +53,7 @@ public sealed class ExternalAuthController(ExternalAuthService service) : Contro
             await service.Callback(role, provider, state!, Cookie(flowId), code, error, ct);
             return Redirect(service.FrontendUrl(role, flowId));
         }
-        catch (Exception exception) when (exception is EmailSecurityException or Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException)
+        catch (Exception exception) when (exception is EmailSecurityException or JobTot.Application.Persistence.DataConcurrencyException)
         {
             return Redirect(service.FrontendUrl(role, error: "invalid_state"));
         }
@@ -88,18 +88,20 @@ public sealed class ExternalAuthController(ExternalAuthService service) : Contro
     public async Task<IActionResult> Link(string role, Guid id, ExternalLinkRequest request, CancellationToken ct)
     {
         RequireIntent();
-        try
-        {
-            return Ok(await service.ConfirmLink(role, id, Cookie(id), request, ct));
-        }
-        catch (ExternalPasswordChangeException change)
+        var result = await service.ConfirmLink(role, id, Cookie(id), request, ct);
+        if (result.ChangeToken is not null)
         {
             return StatusCode(428, new
             {
                 detail = "Đặt mật khẩu mới để hoàn tất liên kết.",
-                changeToken = change.Token
+                changeToken = result.ChangeToken
             });
         }
+        if (result.Session is null)
+            return Problem(statusCode: StatusCodes.Status401Unauthorized,
+                title: "Liên kết tài khoản không thành công",
+                detail: "Thông tin đăng nhập Job Tốt không đúng hoặc tài khoản không khả dụng.");
+        return Ok(result.Session);
     }
 
     [HttpPost("flows/{id:guid}/link-session")]
@@ -108,7 +110,7 @@ public sealed class ExternalAuthController(ExternalAuthService service) : Contro
     public async Task<IActionResult> LinkSession(string role, Guid id, ExternalSessionLinkRequest request, CancellationToken ct)
     {
         RequireIntent();
-        if (!User.IsInRole(ExternalIdentityClient.Role(role)))
+        if (!User.IsInRole(ExternalAuthPolicy.Role(role)))
             return Forbid();
         return Ok(await service.ConfirmSessionLink(role, id, Cookie(id),
             Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!), request, ct));

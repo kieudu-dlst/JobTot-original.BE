@@ -5,5 +5,8 @@
 **/[Bb]in/
 **/[Oo]bj/
 
+# Local build outputs and verification artifacts.
+/.artifacts/
+
 # Generated decoration files and ownership metadata (configure persistent storage in production).
 **/App_Data/cv-decorations/
