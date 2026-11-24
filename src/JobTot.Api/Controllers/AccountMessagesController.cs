@@ -5,7 +5,7 @@ using static JobTot.Application.Features.AccountMessagesService;
 
 namespace JobTot.Api.Controllers;
 
-[ApiController, Route("api/candidate/messages"), Route("api/employer/messages")]
+[ApiController, Route("api/messages"), Route("api/candidate/messages"), Route("api/employer/messages")]
 [Authorize(AuthenticationSchemes = CandidateAuthentication.Scheme + "," + EmployerAuthentication.Scheme)]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public sealed class AccountMessagesController(AccountMessagesService service, ChatSockets sockets) : ApplicationController
@@ -17,8 +17,7 @@ public sealed class AccountMessagesController(AccountMessagesService service, Ch
     public async Task Socket([FromQuery] string? ticket)
     {
         var user = sockets.Consume(ticket);
-        var role = Request.Path.StartsWithSegments("/api/employer") ? "Employer" : "Candidate";
-        if (user is null || !user.IsInRole(role))
+        if (user is null || !(user.IsInRole("Employer") || user.IsInRole("Candidate")))
         {
             Response.StatusCode = 401;
             return;

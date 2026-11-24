@@ -99,6 +99,14 @@ Khi liên kết bằng mật khẩu, kiểm tra mật khẩu và số lần th�
 
 Báo cáo tự động lưu tại `.artifacts/external-auth-checks/` của workspace. Các kết quả thực tế của lần bàn giao được ghi trong báo cáo JSON và phản hồi cuối.
 
+### Timeout và hủy kết nối OAuth
+
+Backchannel có deadline 20 giây cho toàn bộ bước đổi code, chờ discovery/JWKS và đọc userinfo. `ExternalIdentityClient` phân loại timeout nội bộ thành `ExternalIdentityException` với `Failure=Timeout`, phân biệt lỗi kết nối và response không hợp lệ. Nếu token của request bị hủy, giữ nguyên cancellation để middleware/filter kết thúc request, không biến thành lỗi nhà cung cấp hoặc ghi trạng thái thành công.
+
+Application chuyển timeout/mất kết nối thành flow `failed` với thông báo tiếng Việt, xóa verifier/nonce, không tạo phiên đăng nhập. Không retry token exchange: authorization code có thể đã bị nhà cung cấp tiêu thụ. Người dùng cần bắt đầu một lượt đăng nhập mới hoặc dùng email. Không đưa raw exception/token/client secret vào thông báo. Timeout được xử lý không bảo đảm một kết nối mạng/provider bị lỗi sẽ đăng nhập được.
+
+Chạy riêng kiểm thử giao thức (HTTP giả lập, không database/provider thật): `dotnet run --project tools/ExternalAuthChecks -- --protocol-only`. Bộ kiểm tra bao gồm timeout HttpClient thực trên fake handler, hủy đang chạy, hủy trước HTTP, lỗi mạng/HTTP/JSON và các kiểm tra chữ ký/PKCE trước đó. Nếu Visual Studio được đặt dừng ngay khi exception được ném, debugger vẫn có thể dừng trước khi catch chạy; đây không phải bằng chứng exception không được xử lý. Không tắt toàn bộ exception diagnostics.
+
 ### Phạm vi bộ kiểm tra
 
 - Giao diện `/login` và `/register` của cả hai vai trò trên desktop 1440px và mobile 390px có một nút Google toàn chiều rộng, cùng trường email/mật khẩu.

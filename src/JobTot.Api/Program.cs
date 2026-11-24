@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddGeminiSecrets();
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Services.AddControllers(options => options.Filters.Add<RequestCancellationFilter>());
@@ -68,6 +69,7 @@ builder.Services.AddCandidateAuthentication(
 );
 builder.Services.AddAdminAuthentication();
 builder.Services.AddEmployerAuthentication();
+builder.Services.AddCareerSearch();
 
 builder.Services.AddHttpClient("external-auth", client => client.Timeout = TimeSpan.FromSeconds(20))
     .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false });
@@ -143,8 +145,8 @@ if (!app.Environment.IsDevelopment())
 app.UseWebSockets(new WebSocketOptions { KeepAliveInterval = TimeSpan.FromSeconds(20) });
 app.UseRouting();
 app.UseCors("CandidateWeb");
-app.UseRateLimiter();
 app.UseAuthentication();
+app.UseRateLimiter();
 
 // JWT cancellation returns NoResult; stop before authorization can challenge a disconnected client.
 app.UseMiddleware<RequestCancellationMiddleware>();

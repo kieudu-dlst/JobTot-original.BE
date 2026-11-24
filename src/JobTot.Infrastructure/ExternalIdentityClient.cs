@@ -31,11 +31,34 @@ public sealed class ExternalIdentityClient(IConfiguration configuration, IHttpCl
     public async Task<ExternalIdentity> Exchange(ExternalProvider provider, string code, string callback,
         string verifier, string nonce, CancellationToken ct)
     {
+        // Bound the whole backchannel exchange, not each HTTP request independently.
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        deadline.CancelAfter(TimeSpan.FromSeconds(20));
         try
         {
-            return await ExchangeCore(provider, code, callback, verifier, nonce, ct);
+            ct.ThrowIfCancellationRequested();
+            return await ExchangeCore(provider, code, callback, verifier, nonce, deadline.Token);
         }
-        catch (SecurityTokenException e) { throw new ExternalIdentityException(e.Message, e); }
+        catch (OperationCanceledException e) when (!ct.IsCancellationRequested)
+        {
+            throw new ExternalIdentityException("Nhà cung cấp xác thực phản hồi quá lâu.", e,
+                ExternalIdentityFailure.Timeout);
+        }
+        catch (HttpRequestException e)
+        {
+            throw new ExternalIdentityException("Không thể hoàn tất kết nối với nhà cung cấp xác thực.", e,
+                e.StatusCode is null || (int)e.StatusCode >= 500
+                    ? ExternalIdentityFailure.Unavailable : ExternalIdentityFailure.InvalidResponse);
+        }
+        catch (IOException e)
+        {
+            throw new ExternalIdentityException("Kết nối với nhà cung cấp xác thực bị gián đoạn.", e,
+                ExternalIdentityFailure.Unavailable);
+        }
+        catch (Exception e) when (e is SecurityTokenException or JsonException or KeyNotFoundException)
+        {
+            throw new ExternalIdentityException("Kết quả xác thực từ nhà cung cấp không hợp lệ.", e);
+        }
     }
 
     private async Task<ExternalIdentity> ExchangeCore(ExternalProvider provider, string code, string callback,
@@ -51,7 +74,8 @@ public sealed class ExternalIdentityClient(IConfiguration configuration, IHttpCl
             ["grant_type"] = "authorization_code",
             ["code_verifier"] = verifier,
         };
-        using var tokenResponse = await client.PostAsync(provider.TokenEndpoint, new FormUrlEncodedContent(fields), ct);
+        using var content = new FormUrlEncodedContent(fields);
+        using var tokenResponse = await client.PostAsync(provider.TokenEndpoint, content, ct);
         tokenResponse.EnsureSuccessStatusCode();
         using var tokens = JsonDocument.Parse(await tokenResponse.Content.ReadAsStringAsync(ct));
         var accessToken = tokens.RootElement.GetProperty("access_token").GetString()
@@ -61,7 +85,7 @@ public sealed class ExternalIdentityClient(IConfiguration configuration, IHttpCl
                 new OpenIdConnectConfigurationRetriever(), new HttpDocumentRetriever(client) { RequireHttps = true }));
         async Task<System.Security.Claims.ClaimsPrincipal> Validate()
         {
-            var metadata = await manager.GetConfigurationAsync(ct);
+            var metadata = await manager.GetConfigurationAsync(ct).WaitAsync(ct);
             var claims = new JwtSecurityTokenHandler { MapInboundClaims = false }.ValidateToken(
                 tokens.RootElement.GetProperty("id_token").GetString(), new TokenValidationParameters
                 {
