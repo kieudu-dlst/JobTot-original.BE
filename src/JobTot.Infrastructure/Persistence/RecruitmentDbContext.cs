@@ -8,6 +8,7 @@ public sealed class RecruitmentDbContext(DbContextOptions<RecruitmentDbContext> 
 {
     public DbSet<DemoDataset> DemoDatasets => Set<DemoDataset>();
     public DbSet<CareerArticle> CareerArticles => Set<CareerArticle>();
+    public DbSet<AiChatMessage> AiChatMessages => Set<AiChatMessage>();
     public DbSet<ChatConversation> ChatConversations => Set<ChatConversation>();
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
     public DbSet<AccountEmailChallenge> AccountEmailChallenges => Set<AccountEmailChallenge>();
@@ -60,6 +61,19 @@ public sealed class RecruitmentDbContext(DbContextOptions<RecruitmentDbContext> 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<AiChatMessage>(entity =>
+        {
+            entity.ToTable("AiChatMessages");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Role).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.State).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.Content).IsRequired();
+            entity.Property(x => x.ImageName).HasMaxLength(80);
+            entity.Property(x => x.ImageMimeType).HasMaxLength(32);
+            entity.HasIndex(x => new { x.AccountId, x.ConversationId, x.Id });
+            entity.HasIndex(x => new { x.TurnId, x.Role }).IsUnique();
+            entity.HasOne<Account>().WithMany().HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Restrict);
+        });
         modelBuilder.Entity<ExternalAuthFlow>(entity =>
         {
             entity.HasKey(x => x.Id);

@@ -21,6 +21,7 @@ public static class ArchitectureChecks
 {
     public static async Task Run(IServiceProvider services, string origin, Action<bool, string> check)
     {
+        await CancellationChecks.Run(check);
         var references = typeof(CandidateAuthService).Assembly.GetReferencedAssemblies();
         check(!references.Any(x => x.Name!.StartsWith("Microsoft.AspNetCore") || x.Name.StartsWith("Microsoft.EntityFrameworkCore") || x.Name is "JobTot.Infrastructure" or "JobTot.Api"), "Application assembly has no HTTP, ORM, or outward project dependency");
         var controllers = typeof(CandidateAuthController).Assembly.GetTypes().Where(t => t.Name.EndsWith("Controller"));

@@ -19,17 +19,6 @@ public sealed class RequestCancellationMiddleware(RequestDelegate next)
         {
             CompleteAbortedRequest(context);
         }
-        catch (HttpRequestException) when (context.RequestAborted.IsCancellationRequested)
-        {
-            CompleteAbortedRequest(context);
-        }
-        catch (IOException exception)
-            when (context.RequestAborted.IsCancellationRequested
-                && exception.InnerException is System.Net.Sockets.SocketException
-            )
-        {
-            CompleteAbortedRequest(context);
-        }
     }
 
     private static void CompleteAbortedRequest(HttpContext context)

@@ -5,6 +5,7 @@ namespace JobTot.Application.Features;
 public sealed class AccountMessagesService(
     IRecruitmentData db,
     ITransientState typing,
+    IChatEvents events,
     ICurrentActor actor
 )
     : ApplicationService(actor)
@@ -259,6 +260,7 @@ public sealed class AccountMessagesService(
             try
             {
                 await db.SaveChangesAsync(ct);
+                await Notify(id, "read", input.MessageIds, ct);
                 return Completed();
             }
             catch (DataWriteException ex) when (attempt < 2 && Duplicate(ex))
@@ -369,6 +371,7 @@ public sealed class AccountMessagesService(
             }
             else
                 typing.Remove((id, AccountId));
+            await Notify(id, "typing", new { isTyping = input.IsTyping, expiresAt = DateTimeOffset.UtcNow.AddSeconds(6) }, ct);
             return Completed();
         }
         catch (Exception exception)
@@ -441,6 +444,7 @@ public sealed class AccountMessagesService(
             }
 
             typing.Remove((id, AccountId));
+            await Notify(id, "message", previousDto(message), ct);
             return Success(previousDto(message));
         }
         catch (OperationCanceledException)
@@ -455,6 +459,13 @@ public sealed class AccountMessagesService(
             );
             throw;
         }
+    }
+
+    private async Task Notify(Guid id, string type, object data, CancellationToken ct)
+    {
+        var members = await Mine.Where(c => c.Id == id)
+            .Select(c => new { c.FirstAccountId, c.SecondAccountId }).SingleAsync(ct);
+        events.Publish([members.FirstAccountId, members.SecondAccountId], new ChatEvent(type, id, AccountId, data));
     }
 
     private static object previousDto(ChatMessage m)

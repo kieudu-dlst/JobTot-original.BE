@@ -5,9 +5,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddGeminiSecrets();
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
-builder.Services.AddControllers();
+builder.Services.AddControllers(options => options.Filters.Add<RequestCancellationFilter>());
 builder
     .Services.AddHttpClient("company-maps", client => client.Timeout = Timeout.InfiniteTimeSpan)
     .ConfigurePrimaryHttpMessageHandler(
@@ -17,6 +18,8 @@ builder.Services.AddMemoryCache();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentActor, CurrentActor>();
 builder.Services.AddApplication();
+builder.Services.AddSingleton<ChatSockets>();
+builder.Services.AddSingleton<JobTot.Application.Features.IChatEvents>(sp => sp.GetRequiredService<ChatSockets>());
 
 builder.Services.AddOpenApi(options =>
 {
@@ -66,6 +69,7 @@ builder.Services.AddCandidateAuthentication(
 );
 builder.Services.AddAdminAuthentication();
 builder.Services.AddEmployerAuthentication();
+builder.Services.AddCareerSearch();
 
 builder.Services.AddHttpClient("external-auth", client => client.Timeout = TimeSpan.FromSeconds(20))
     .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false });
@@ -138,10 +142,11 @@ app.UseStaticFiles(new StaticFileOptions
 // Allow both local launch profiles without redirecting Swagger's fetch to another origin.
 if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
+app.UseWebSockets(new WebSocketOptions { KeepAliveInterval = TimeSpan.FromSeconds(20) });
 app.UseRouting();
 app.UseCors("CandidateWeb");
-app.UseRateLimiter();
 app.UseAuthentication();
+app.UseRateLimiter();
 
 // JWT cancellation returns NoResult; stop before authorization can challenge a disconnected client.
 app.UseMiddleware<RequestCancellationMiddleware>();

@@ -17,28 +17,60 @@ internal sealed class DataQueryProvider(RecruitmentDbContext db) : IDataQueryPro
     public object? Execute(Expression expression) => Provider.Execute(Translate(expression));
     public TResult Execute<TResult>(Expression expression) => Provider.Execute<TResult>(Translate(expression));
 
-    private static async Task<T> Run<T>(Func<Task<T>> action, CancellationToken ct)
+    private static Task<T> Run<T>(Func<Task<T>> action, CancellationToken ct) =>
+        ct.IsCancellationRequested ? Task.FromCanceled<T>(ct) : RunCore(action, ct);
+
+    private static Task<T> RunCore<T>(Func<Task<T>> action, CancellationToken ct)
     {
-        ct.ThrowIfCancellationRequested();
+        var completion = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
+        void Fail(Exception error)
+        {
+            if (ct.IsCancellationRequested && RequestCancellation.IsClientCancellation(error, ct))
+                completion.TrySetCanceled(ct);
+            else if (error is SqlException { Number: -2 })
+                completion.TrySetException(new DataReadTimeoutException(error));
+            else
+                completion.TrySetException(error);
+        }
+        void Complete(Task<T> task)
+        {
+            if (task.IsCanceled)
+                completion.TrySetCanceled(ct.IsCancellationRequested ? ct : new CancellationToken(true));
+            else if (task.IsFaulted)
+            {
+                var errors = task.Exception!.InnerExceptions;
+                if (errors.Count == 1) Fail(errors[0]);
+                else completion.TrySetException(errors);
+            }
+            else
+                completion.TrySetResult(task.Result);
+        }
         try
         {
-            return await action();
+            var task = action();
+            if (task.IsCompleted) Complete(task);
+            else _ = task.ContinueWith(Complete, CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         }
-        catch (SqlException e) when (ct.IsCancellationRequested && e.Errors.Cast<SqlError>().Any(x => x.Message.Contains("Operation cancelled by user", StringComparison.OrdinalIgnoreCase)))
+        catch (Exception error)
         {
-            throw new DataOperationCanceledException(e);
+            Fail(error);
         }
+        // Cancellation travels as a cancelled task. Do not throw a new user exception
+        // for an expected browser disconnect; the HTTP boundary already handles it.
+        return completion.Task;
     }
     public Task<TResult> ExecuteAsync<TResult>(Expression expression, CancellationToken ct) =>
         Run(() => ((IAsyncQueryProvider)Provider).ExecuteAsync<Task<TResult>>(Translate(expression), ct), ct);
     public Task<List<T>> ListAsync<T>(Expression expression, CancellationToken ct) => Run(() => EntityFrameworkQueryableExtensions.ToListAsync(Read<T>(expression), ct), ct);
     public Task<int> UpdateAsync<T>(Expression query, Expression<Func<Changes<T>, Changes<T>>> changes, CancellationToken ct) where T : class
+        => Run(() =>
     {
         var parameter = Expression.Parameter(typeof(SetPropertyCalls<T>), changes.Parameters[0].Name);
         var body = new ChangeTranslator<T>(changes.Parameters[0], parameter).Visit(changes.Body)!;
         var setters = Expression.Lambda<Func<SetPropertyCalls<T>, SetPropertyCalls<T>>>(body, parameter);
-        return Run(() => Read<T>(query).ExecuteUpdateAsync(setters, ct), ct);
-    }
+        return Read<T>(query).ExecuteUpdateAsync(setters, ct);
+    }, ct);
     private sealed class DataQuery<T>(DataQueryProvider provider, Expression expression) : IOrderedQueryable<T>
     {
         public Type ElementType => typeof(T);

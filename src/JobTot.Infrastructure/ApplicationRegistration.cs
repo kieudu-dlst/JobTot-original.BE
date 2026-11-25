@@ -47,6 +47,7 @@ public static class ApplicationRegistration
     }
     public static IServiceCollection AddInfrastructureAdapters(this IServiceCollection services)
     {
+        services.TryAddSingleton<IChatEvents, NullChatEvents>();
         services.AddMemoryCache();
         services.AddHttpClient();
         services.AddDataProtection();

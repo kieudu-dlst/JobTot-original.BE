@@ -222,7 +222,14 @@ public sealed class ExternalAuthService(IRecruitmentData db, ISecretProtection p
                     Stage = "failed",
                     Verifier = "",
                     Nonce = "",
-                    Error = "Không thể xác thực kết quả từ nhà cung cấp. Vui lòng thử lại hoặc sử dụng email."
+                    Error = exception switch
+                    {
+                        ExternalIdentityException { Failure: ExternalIdentityFailure.Timeout } or OperationCanceledException =>
+                            "Nhà cung cấp xác thực phản hồi quá lâu. Vui lòng bắt đầu đăng nhập lại hoặc sử dụng email.",
+                        ExternalIdentityException { Failure: ExternalIdentityFailure.Unavailable } =>
+                            "Không thể kết nối nhà cung cấp xác thực. Vui lòng bắt đầu đăng nhập lại hoặc sử dụng email.",
+                        _ => "Không thể xác thực kết quả từ nhà cung cấp. Vui lòng thử lại hoặc sử dụng email."
+                    }
                 });
             }
         }

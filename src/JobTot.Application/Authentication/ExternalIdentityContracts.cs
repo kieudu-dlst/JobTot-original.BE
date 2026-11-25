@@ -32,4 +32,10 @@ public static class ExternalAuthPolicy
 
 }
 
-public sealed class ExternalIdentityException(string message, Exception inner) : Exception(message, inner);
+public enum ExternalIdentityFailure { InvalidResponse, Timeout, Unavailable }
+
+public sealed class ExternalIdentityException(string message, Exception inner,
+    ExternalIdentityFailure failure = ExternalIdentityFailure.InvalidResponse) : Exception(message, inner)
+{
+    public ExternalIdentityFailure Failure { get; } = failure;
+}
