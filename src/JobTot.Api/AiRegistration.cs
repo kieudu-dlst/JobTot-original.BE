@@ -8,10 +8,16 @@ namespace JobTot.Api;
 
 public static class AiRegistration
 {
-    public static IServiceCollection AddCareerSearch(this IServiceCollection services)
+    public static IServiceCollection AddCareerSearch(this IServiceCollection services, bool persistHistory = true)
     {
         services.AddScoped<CareerSearchService>();
         services.AddScoped<ICareerSearchProvider, GeminiCareerSearch>();
+        if (persistHistory)
+        {
+            services.AddScoped<IAiChatHistoryStore, AiChatHistoryStore>();
+            services.AddScoped<AiConversationService>();
+            services.AddScoped<AiJobLookup>();
+        }
         services.AddSingleton<AiConcurrencyFilter>();
         services.AddHttpClient("gemini-career-search", client =>
         {

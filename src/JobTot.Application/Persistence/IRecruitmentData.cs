@@ -220,8 +220,8 @@ public class DataWriteException(string message, Exception inner, bool duplicate 
     public bool IsDuplicate { get; } = duplicate;
 }
 public sealed class DataConcurrencyException(string message, Exception inner) : DataWriteException(message, inner);
-public sealed class DataOperationCanceledException(Exception inner, CancellationToken cancellationToken = default)
-    : OperationCanceledException("Data operation canceled.", inner, cancellationToken);
+public sealed class DataReadTimeoutException(Exception inner)
+    : Exception("Database query timed out.", inner);
 
 public interface IDataFailureClassifier
 {

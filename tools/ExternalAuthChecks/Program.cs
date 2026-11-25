@@ -13,7 +13,20 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 
+if (args.Contains("--ai-lookup-only")) { await AiLookupChecks.Run(); return; }
+if (args.Contains("--ai-lookup-sql-read")) { await AiLookupChecks.SqlRead(); return; }
 const string origin = "http://127.0.0.1:5199";
+if (args.Contains("--ai-history-sql-read")) { await AiHistoryChecks.SqlRead(); return; }
+if (args.Contains("--ai-history-only")) { await AiHistoryChecks.Run(); return; }
+if (args.Contains("--database-reads")) { await DatabaseReadChecks.Run(); return; }
+if (args.Contains("--cancellation-only"))
+{
+    var count = 0;
+    await CancellationChecks.Run((ok, name) => { if (!ok) throw new Exception(name); count++; Console.WriteLine("PASS " + name); });
+    Console.WriteLine($"PASS {count} cancellation checks; no external database or network");
+    return;
+}
+if (args.Contains("--gemini-live-image")) { await GeminiChecks.Live(args[Array.IndexOf(args, "--gemini-live-image") + 1]); return; }
 if (args.Contains("--gemini-live")) { await GeminiChecks.Live(); return; }
 if (args.Contains("--gemini-only")) { await GeminiChecks.Run(); return; }
 if (args.Contains("--protocol-only"))

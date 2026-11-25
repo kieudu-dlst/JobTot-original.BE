@@ -22,6 +22,30 @@ namespace JobTot.Infrastructure.Persistence.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("JobTot.Domain.Entities.AiChatMessage", b =>
+                {
+                    b.Property<long>("Id").ValueGeneratedOnAdd().HasColumnType("bigint");
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    b.Property<Guid>("AccountId").HasColumnType("uniqueidentifier");
+                    b.Property<Guid>("ConversationId").HasColumnType("uniqueidentifier");
+                    b.Property<Guid>("TurnId").HasColumnType("uniqueidentifier");
+                    b.Property<string>("Role").IsRequired().HasMaxLength(16).HasColumnType("nvarchar(16)");
+                    b.Property<string>("Content").IsRequired().HasColumnType("nvarchar(max)");
+                    b.Property<string>("State").IsRequired().HasMaxLength(16).HasColumnType("nvarchar(16)");
+                    b.Property<string>("ImageName").HasMaxLength(80).HasColumnType("nvarchar(80)");
+                    b.Property<string>("ImageMimeType").HasMaxLength(32).HasColumnType("nvarchar(32)");
+                    b.Property<DateTimeOffset>("CreatedAt").HasColumnType("datetimeoffset");
+                    b.Property<DateTimeOffset>("UpdatedAt").HasColumnType("datetimeoffset");
+                    b.HasKey("Id");
+                    b.HasIndex("AccountId", "ConversationId", "Id");
+                    b.HasIndex("TurnId", "Role").IsUnique();
+                    b.ToTable("AiChatMessages");
+                });
+
+            modelBuilder.Entity("JobTot.Domain.Entities.AiChatMessage", b =>
+                {
+                    b.HasOne("JobTot.Domain.Entities.Account", null).WithMany().HasForeignKey("AccountId").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                });
             modelBuilder.Entity("JobTot.Domain.Entities.Account", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2406,6 +2430,30 @@ namespace JobTot.Infrastructure.Persistence.Migrations
                     b.ToTable("DemoDatasets", (string)null);
                 });
 
+            modelBuilder.Entity("JobTot.Domain.Entities.AiChatMessage", b =>
+                {
+                    b.Property<long>("Id").ValueGeneratedOnAdd().HasColumnType("bigint");
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    b.Property<Guid>("AccountId").HasColumnType("uniqueidentifier");
+                    b.Property<Guid>("ConversationId").HasColumnType("uniqueidentifier");
+                    b.Property<Guid>("TurnId").HasColumnType("uniqueidentifier");
+                    b.Property<string>("Role").IsRequired().HasMaxLength(16).HasColumnType("nvarchar(16)");
+                    b.Property<string>("Content").IsRequired().HasColumnType("nvarchar(max)");
+                    b.Property<string>("State").IsRequired().HasMaxLength(16).HasColumnType("nvarchar(16)");
+                    b.Property<string>("ImageName").HasMaxLength(80).HasColumnType("nvarchar(80)");
+                    b.Property<string>("ImageMimeType").HasMaxLength(32).HasColumnType("nvarchar(32)");
+                    b.Property<DateTimeOffset>("CreatedAt").HasColumnType("datetimeoffset");
+                    b.Property<DateTimeOffset>("UpdatedAt").HasColumnType("datetimeoffset");
+                    b.HasKey("Id");
+                    b.HasIndex("AccountId", "ConversationId", "Id");
+                    b.HasIndex("TurnId", "Role").IsUnique();
+                    b.ToTable("AiChatMessages");
+                });
+
+            modelBuilder.Entity("JobTot.Domain.Entities.AiChatMessage", b =>
+                {
+                    b.HasOne("JobTot.Domain.Entities.Account", null).WithMany().HasForeignKey("AccountId").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                });
             modelBuilder.Entity("JobTot.Domain.Entities.Account", b =>
                 {
                     b.HasOne("JobTot.Domain.Entities.Account", "CreatedAccount")
@@ -3529,6 +3577,10 @@ namespace JobTot.Infrastructure.Persistence.Migrations
                     b.Navigation("SenderAccount");
                 });
 
+modelBuilder.Entity("JobTot.Domain.Entities.AiChatMessage", b =>
+                {
+                    b.HasOne("JobTot.Domain.Entities.Account", null).WithMany().HasForeignKey("AccountId").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                });
             modelBuilder.Entity("JobTot.Domain.Entities.Account", b =>
                 {
                     b.Navigation("Articles");

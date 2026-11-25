@@ -15,7 +15,7 @@ public static class GeminiChecks
 {
     // Explicit opt-in only: real Google request, real controller and production configuration
     // loader. Test JWT validation skips DB-backed sessions in this isolated loopback host.
-    public static async Task Live()
+    public static async Task Live(string? imagePath = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Production", Args = [] });
         builder.Configuration.AddGeminiSecrets();
@@ -24,7 +24,7 @@ public static class GeminiChecks
         builder.Services.AddControllers().AddApplicationPart(typeof(CareerSearchController).Assembly);
         builder.Services.AddCandidateAuthentication(new ConfigurationBuilder().Build(), true);
         builder.Services.AddEmployerAuthentication();
-        builder.Services.AddCareerSearch();
+        builder.Services.AddCareerSearch(persistHistory: false);
         builder.Services.PostConfigure<JwtBearerOptions>(CandidateAuthentication.Scheme,
             options => options.Events.OnTokenValidated = _ => Task.CompletedTask);
         await using var app = builder.Build();
@@ -36,14 +36,21 @@ public static class GeminiChecks
             var issuer = new AccessTokenIssuer(app.Services.GetRequiredService<CandidateJwtSettings>());
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer",
                 issuer.Issue("Candidate", Guid.NewGuid(), Guid.NewGuid(), "Test", DateTimeOffset.UtcNow.AddMinutes(5)));
+            CareerChatImage? image = imagePath is null ? null : new(
+                Path.GetExtension(imagePath).Equals(".png", StringComparison.OrdinalIgnoreCase) ? "image/png" : "image/jpeg",
+                Convert.ToBase64String(await File.ReadAllBytesAsync(imagePath)));
             using var response = await client.PostAsJsonAsync("/api/ai/career-search",
-                new { question = "Backend Developer cần kỹ năng gì? Trả lời một câu ngắn." });
+                new CareerSearchRequest { Question = image is null ? "Backend Developer cần kỹ năng gì? Trả lời một câu ngắn."
+                    : "Đọc vị trí ứng tuyển trong ảnh rồi góp ý cải thiện CV ngắn gọn. Không đoán nội dung không đọc được.", Image = image });
             using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
             if (!response.IsSuccessStatusCode)
                 throw new Exception($"Live chat HTTP {(int)response.StatusCode}; code={json.RootElement.GetProperty("code").GetString()}");
             var answer = json.RootElement.GetProperty("answer").GetString();
             if (string.IsNullOrWhiteSpace(answer)) throw new Exception("Live chat returned an empty answer");
+            if (image is not null && !answer.Contains("backend", StringComparison.OrdinalIgnoreCase))
+                throw new Exception("Image review did not identify the position printed in the synthetic CV fixture");
             Console.WriteLine($"PASS live POST /api/ai/career-search: HTTP 200, {answer.Length} answer characters, no Google Search");
+            if (image is not null) Console.WriteLine("PASS live image review: Gemini recognized the role shown only in the synthetic CV image.");
         }
         finally { await app.StopAsync(); }
     }
@@ -70,6 +77,8 @@ public static class GeminiChecks
         {
             using var body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(ct));
             Check(!body.RootElement.TryGetProperty("tools", out _), "REST request omits search tools");
+            Check(!body.RootElement.GetProperty("generationConfig").TryGetProperty("maxOutputTokens", out _),
+                "request does not impose an output token limit");
             Check(request.RequestUri!.AbsolutePath.EndsWith("gemini-3.5-flash-lite:generateContent") && !request.RequestUri.Query.Contains("key"), "model and API schema are consistent; no key in URL");
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(fixture) };
         });
@@ -95,7 +104,7 @@ public static class GeminiChecks
         { ["Gemini:ApiKey"] = "test-only-not-a-real-key", ["Gemini:Model"] = "gemini-2.5-flash-lite" }).Build());
         Check((await configuredModel.SearchAsync("test", default)).GroundingStatus == "grounded" && configuredModelCalls == 1,
             "explicit model override preserves grounded response mapping without an extra request");
-        foreach (var status in new[] { 400, 401, 403, 404, 429, 500, 503 })
+        foreach (var status in new[] { 400, 401, 403, 404, 429 })
         {
             var calls = 0;
             var failover = new GeminiCareerSearch(new Factory(new FakeHandler((request, _) =>
@@ -115,6 +124,41 @@ public static class GeminiChecks
             Check(calls == (status is 400 or 404 ? 1 : 2),
                 $"HTTP {status} rotates only recoverable failures and ignores legacy key when pool is configured");
         }
+        var transientCalls = 0;
+        var recovering = new GeminiCareerSearch(new Factory(new FakeHandler((request, _) =>
+        {
+            transientCalls++;
+            Check(request.Headers.GetValues("x-goog-api-key").Single() == "test-key-1",
+                "provider overload retry keeps the same credential and model");
+            return Task.FromResult(new HttpResponseMessage(transientCalls < 3 ? HttpStatusCode.ServiceUnavailable : HttpStatusCode.OK)
+            { Content = new StringContent(transientCalls < 3 ? "{}" : fixture) });
+        })), new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        { ["Gemini:ApiKeys:0"] = "test-key-1", ["Gemini:ApiKeys:1"] = "test-key-2" }).Build());
+        Check((await recovering.SearchAsync("test", default)).Answer == answer && transientCalls == 3,
+            "503 recovers after delayed retries and success is not replayed");
+        var unavailableCalls = 0;
+        var unavailable = new GeminiCareerSearch(new Factory(new FakeHandler((_, _) =>
+        {
+            unavailableCalls++;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable) { Content = new StringContent("{}") });
+        })), new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        { ["Gemini:ApiKeys:0"] = "test-key-1", ["Gemini:ApiKeys:1"] = "test-key-2" }).Build());
+        try { await unavailable.SearchAsync("test", default); throw new Exception("Expected unavailable error"); }
+        catch (CareerSearchException error)
+        { Check(unavailableCalls == 4 && error.Code == "ai_provider_unavailable" && error.ProviderStatus == 503,
+            "persistent overload stops at a shared retry budget across all credentials"); }
+        using var cancelRetry = new CancellationTokenSource();
+        var cancelCalls = 0;
+        var cancelProvider = new GeminiCareerSearch(new Factory(new FakeHandler((_, _) =>
+        {
+            cancelCalls++;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable) { Content = new StringContent("{}") });
+        })), configuration);
+        var cancelledRetry = cancelProvider.SearchAsync("test", cancelRetry.Token);
+        cancelRetry.Cancel();
+        try { await cancelledRetry; throw new Exception("Expected cancelled retry"); }
+        catch (CareerSearchException error)
+        { Check(error.Code == "ai_cancelled" && cancelCalls == 1, "client cancellation stops retry backoff immediately without another generation"); }
         var exhaustedCalls = 0;
         var poolExhausted = new GeminiCareerSearch(new Factory(new FakeHandler((_, _) =>
         {
@@ -148,9 +192,9 @@ public static class GeminiChecks
                 calls++; return Task.FromResult(new HttpResponseMessage((HttpStatusCode)status) { Content = new StringContent("sensitive provider error") });
             })), configuration);
             try { await failure.SearchAsync("test", default); throw new Exception("expected error"); }
-            catch (CareerSearchException e) { Check(calls == 1 && !e.Message.Contains("sensitive") && e.ProviderStatus == status
+            catch (CareerSearchException e) { Check(calls == (status == 500 ? 3 : 1) && !e.Message.Contains("sensitive") && e.ProviderStatus == status
                 && e.FailureStage == "provider_http" && e.ProviderReason is null
-                && e.Code == (status == 429 ? "ai_provider_quota" : status == 500 ? "ai_provider_error" : "ai_configuration"), "sanitized HTTP " + status + ", no retry"); }
+                && e.Code == (status == 429 ? "ai_provider_quota" : status == 500 ? "ai_provider_unavailable" : "ai_configuration"), "sanitized HTTP " + status + ", bounded retries only for transient server errors"); }
         }
         foreach (var reason in new[] { "API_KEY_INVALID", "SERVICE_DISABLED", "API_KEY_SERVICE_BLOCKED", "sensitive-key-value", "__proto__" })
         {
@@ -191,11 +235,28 @@ public static class GeminiChecks
                     "quota diagnostics retain only a known category and numeric limit, including zero");
             }
         }
-        try { await slow.SearchAsync("test", default); throw new Exception("expected timeout"); }
-        catch (CareerSearchException e) { Check(e.Code == "ai_timeout", "deadline translates to stable timeout error"); }
+        var longAnswer = new string('a', 70000);
+        using var longDocument = JsonDocument.Parse(JsonSerializer.Serialize(new
+        { candidates = new[] { new { content = new { parts = new[] { new { text = longAnswer } } } } } }));
+        Check(GeminiCareerSearch.Parse(longDocument.RootElement).Answer == longAnswer,
+            "long answers are returned without application truncation or rejection");
+        var waiting = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var unlimited = new GeminiCareerSearch(new Factory(new FakeHandler(async (_, token) =>
+        {
+            waiting.SetResult();
+            await release.Task.WaitAsync(token);
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(fixture) };
+        })), configuration);
+        var pending = unlimited.SearchAsync("test", default);
+        await waiting.Task;
+        await Task.Delay(1100);
+        Check(!pending.IsCompleted, "obsolete one-second timeout setting cannot cancel a pending request");
+        release.SetResult();
+        Check((await pending).Answer == answer, "waiting request completes when provider responds");
         using var canceled = new CancellationTokenSource(); canceled.Cancel();
         try { await slow.SearchAsync("test", canceled.Token); throw new Exception("expected cancellation"); }
-        catch (OperationCanceledException) { Check(true, "client cancellation remains cancellation"); }
+        catch (CareerSearchException e) { Check(e.Code == "ai_cancelled", "client cancellation is handled inside the provider without escaping TaskCanceledException"); }
         var missing = new GeminiCareerSearch(new Factory(handler), new ConfigurationBuilder().Build());
         try { await missing.SearchAsync("test", default); throw new Exception("expected missing config"); }
         catch (CareerSearchException e) { Check(e.Code == "ai_not_configured", "missing configuration fails only when the service is called"); }
@@ -234,12 +295,13 @@ public static class GeminiChecks
             }
         }
         foreach (var invalid in new[] { new Dictionary<string, string?> { ["Gemini:ApiKey"] = "invalid\r\nheader" },
-            new Dictionary<string, string?> { ["Gemini:ApiKey"] = "test-only", ["Gemini:TimeoutSeconds"] = "invalid" } })
+            new Dictionary<string, string?> { ["Gemini:ApiKey"] = "test-only", ["Gemini:Model"] = "invalid/model" } })
         {
             var badConfig = new GeminiCareerSearch(new Factory(handler), new ConfigurationBuilder().AddInMemoryCollection(invalid).Build());
             try { await badConfig.SearchAsync("test", default); throw new Exception("expected configuration failure"); }
             catch (CareerSearchException e) { Check(e.Code == "ai_configuration" && !e.Message.Contains("header"), "invalid configuration is rejected safely before HTTP"); }
         }
+        await CareerImageChecks.Run(Check);
         await EndpointChecks(Check, result);
         Console.WriteLine($"PASS {count} Gemini checks; fake HTTP only, no database or Google requests");
     }
@@ -250,7 +312,7 @@ public static class GeminiChecks
         builder.Logging.ClearProviders(); builder.WebHost.UseUrls("http://127.0.0.1:0");
         builder.Services.AddControllers().AddApplicationPart(typeof(CareerSearchController).Assembly);
         builder.Services.AddCandidateAuthentication(new ConfigurationBuilder().Build(), true);
-        builder.Services.AddEmployerAuthentication(); builder.Services.AddCareerSearch();
+        builder.Services.AddEmployerAuthentication(); builder.Services.AddCareerSearch(persistHistory: false);
         foreach (var scheme in new[] { CandidateAuthentication.Scheme, EmployerAuthentication.Scheme })
             builder.Services.PostConfigure<JwtBearerOptions>(scheme, options => options.Events.OnTokenValidated = _ => Task.CompletedTask);
         var fake = new BlockingProvider(result);
@@ -265,6 +327,11 @@ public static class GeminiChecks
         var issuer = new AccessTokenIssuer(app.Services.GetRequiredService<CandidateJwtSettings>());
         void Login(string role, Guid id) => client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", issuer.Issue(role, id, Guid.NewGuid(), "Test", DateTimeOffset.UtcNow.AddMinutes(5)));
         Login("Candidate", Guid.NewGuid());
+        var badImage = await client.PostAsJsonAsync(path, new { question = "review", image = new { mimeType = "image/png", data = "not-base64" } });
+        check(badImage.StatusCode == HttpStatusCode.BadRequest && (await badImage.Content.ReadAsStringAsync()).Contains("ai_invalid_image"),
+            "image validation failure returns a safe HTTP 400");
+        var validImage = await client.PostAsJsonAsync(path, new { image = new { mimeType = "image/png", data = CareerImageChecks.Png } });
+        check(validImage.IsSuccessStatusCode, "authenticated image-only request reaches chat service");
         check((await client.PostAsJsonAsync(path, new { question = " " })).StatusCode == HttpStatusCode.BadRequest, "whitespace question rejected");
         check((await client.PostAsJsonAsync(path, new { question = new string('a', 2001) })).StatusCode == HttpStatusCode.BadRequest, "oversized question rejected");
         foreach (var role in new[] { "Candidate", "Employer" })
@@ -299,6 +366,12 @@ public static class GeminiChecks
                 && error.GetProperty("quotaViolations")[0].GetProperty("limit").GetInt64() == 0,
                 "endpoint serializes safe Google quota details for frontend zero-limit handling");
         }
+        fake.Failure = new CareerSearchException("ai_provider_unavailable", "Trợ lý AI đang bận.", "provider_http", 503);
+        var unavailableResponse = await client.PostAsJsonAsync(path, new { question = "skills" });
+        check(unavailableResponse.StatusCode == HttpStatusCode.ServiceUnavailable
+            && unavailableResponse.Headers.RetryAfter?.Delta == TimeSpan.FromSeconds(5)
+            && (await unavailableResponse.Content.ReadAsStringAsync()).Contains("ai_provider_unavailable"),
+            "provider overload returns HTTP 503 and safe retry guidance rather than a generic 502");
         fake.Failure = null;
         fake.Block = true;
         var running = new List<Task<HttpResponseMessage>>();
@@ -312,6 +385,7 @@ public static class GeminiChecks
     }
     private sealed class BlockingProvider(CareerSearchResponse result) : ICareerSearchProvider
     {
+        public Task<CareerSearchResponse> SearchAsync(string question, CareerChatImage image, CancellationToken ct) => SearchAsync(question, ct);
         public bool Block;
         public CareerSearchException? Failure;
         private int active;

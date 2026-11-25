@@ -9,8 +9,10 @@ public sealed class AccountHeaderService(
     ICurrentActor actor
 ) : ApplicationService(actor)
 {
+    [System.Diagnostics.DebuggerNonUserCode]
     public async Task<UseCaseResult> Get(CancellationToken ct)
     {
+        if (ct.IsCancellationRequested) return UseCaseResult.Cancelled();
         try
         {
             var id = Actor.AccountId;
@@ -43,13 +45,18 @@ public sealed class AccountHeaderService(
                 : EmployerCompanyService
                     .ReadBrand(recruiter.Culture, recruiter.LogoUrl, null)
                     .LogoUrl;
-            var messages = await db
+            var unreadMessages = db
                 .ChatMessages.ReadOnly()
                 .Where(m =>
                     !db.AccountMessageReads.Any(r => r.AccountId == id && r.MessageId == m.Id)
                     && m.SenderAccountId != id
                     && (m.Conversation.FirstAccountId == id || m.Conversation.SecondAccountId == id)
-                )
+                );
+            var unreadConversationCount = await unreadMessages
+                .Select(m => m.ConversationId)
+                .Distinct()
+                .CountAsync(ct);
+            var messages = await unreadMessages
                 .OrderByDescending(m => m.Id)
                 .Take(50)
                 .Select(m => new
@@ -185,18 +192,6 @@ public sealed class AccountHeaderService(
                     i.candidate ? "/my-jobs?tab=interviews" : "/employer/interviews"
                 ))
             );
-            var unreadConversationCount = await db
-                .ChatConversations.ReadOnly()
-                .Where(c =>
-                    (c.FirstAccountId == id || c.SecondAccountId == id)
-                    && c.Messages.Any(m =>
-                        m.SenderAccountId != id
-                        && !db.AccountMessageReads.Any(r =>
-                            r.AccountId == id && r.MessageId == m.Id
-                        )
-                    )
-                )
-                .CountAsync(ct);
             var latestNotices = notices.OrderByDescending(n => n.At).Take(30).ToArray();
             var notificationIds = latestNotices.Select(n => n.Id).ToArray();
             var readIds = (
@@ -226,59 +221,67 @@ public sealed class AccountHeaderService(
                 }
             );
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            throw;
+            return UseCaseResult.Cancelled();
         }
         catch (Exception exception)
         {
             global::JobTot.Application.ExceptionDiagnostics.Record(
                 exception,
-                "AccountHeaderController.Get"
+                "AccountHeaderService.Get"
             );
             throw;
         }
     }
     public async Task<UseCaseResult> MarkRead(ReadInput input, CancellationToken ct)
     {
-        if (
-            input.Ids is null
-            || input.Ids.Length > 100
-            || input.Ids.Any(x => string.IsNullOrWhiteSpace(x) || x.Length > 100)
-        )
-            return Invalid();
-        var accountId = Actor.AccountId;
-        for (var attempt = 0; attempt < 3; attempt++)
+        if (ct.IsCancellationRequested) return UseCaseResult.Cancelled();
+        try
         {
-            var existing = await db
-                .AccountNotificationReads.Where(r =>
-                    r.AccountId == accountId && input.Ids.Contains(r.NotificationId)
-                )
-                .Select(r => r.NotificationId)
-                .ToListAsync(ct);
-            db.AccountNotificationReads.AddRange(
-                input
-                    .Ids.Distinct()
-                    .Except(existing)
-                    .Select(id => new AccountNotificationRead
-                    {
-                        AccountId = accountId,
-                        NotificationId = id,
-                    })
-            );
-            try
+            if (
+                input.Ids is null
+                || input.Ids.Length > 100
+                || input.Ids.Any(x => string.IsNullOrWhiteSpace(x) || x.Length > 100)
+            )
+                return Invalid();
+            var accountId = Actor.AccountId;
+            for (var attempt = 0; attempt < 3; attempt++)
             {
-                await db.SaveChangesAsync(ct);
-                return Completed();
+                var existing = await db
+                    .AccountNotificationReads.Where(r =>
+                        r.AccountId == accountId && input.Ids.Contains(r.NotificationId)
+                    )
+                    .Select(r => r.NotificationId)
+                    .ToListAsync(ct);
+                db.AccountNotificationReads.AddRange(
+                    input
+                        .Ids.Distinct()
+                        .Except(existing)
+                        .Select(id => new AccountNotificationRead
+                        {
+                            AccountId = accountId,
+                            NotificationId = id,
+                        })
+                );
+                try
+                {
+                    await db.SaveChangesAsync(ct);
+                    return Completed();
+                }
+                catch (DataWriteException ex)
+                    when (attempt < 2
+                        && ex.IsDuplicate)
+                {
+                    db.Reset();
+                }
             }
-            catch (DataWriteException ex)
-                when (attempt < 2
-                    && ex.IsDuplicate)
-            {
-                db.Reset();
-            }
+            return Conflict();
         }
-        return Conflict();
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            return UseCaseResult.Cancelled();
+        }
     }
 
     public sealed record ReadInput(string[] Ids);

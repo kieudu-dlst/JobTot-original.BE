@@ -67,3 +67,40 @@ Ví dụ:
 - Admin: admin@demo.jobtot.test
 - Nhà tuyển dụng: employer001@demo.jobtot.test
 - Ứng viên: candidate0001@demo.jobtot.test 
+# AI public job retrieval
+
+Only explicit company/job/recruitment requests in the CURRENT question trigger
+`AiJobLookup` and job cards. Industry, AI-impact, skills, CV and opportunity advice
+receive ordinary answers without cards or no-match notes, even after a job-search turn.
+Job matching uses actual position titles and role aliases, never the company's industry
+alone: a marketing job at an IT company is not an IT vacancy. General advice never
+requires matching catalogue records. For explicit searches, Gemini advises first;
+a no-match note is appended afterwards if necessary.
+The assistant stays within careers, work-related study/skills, CVs and interviews;
+off-topic requests should receive a brief explanation of that mission.
+For follow-ups, backend reads up to four prior user questions from the authenticated
+owner's conversation. These are contextual data, not system instructions. Earlier
+images and stale job snapshots are never replayed. References such as "ngành này"
+resolve the earlier subject; new-graduate requests filter internships/junior or
+entry-level jobs. Returned examples are not statistics for the whole labour market.
+The authenticated actor is required; both candidate and employer chat receive only the
+public catalogue, never private employer records. Prompt claims cannot change this scope.
+There is no SQL execution or arbitrary table access granted to Gemini.
+
+The allow-list includes public job title, company name/description/founding year,
+industry, location and published salary. Tax codes, registration documents, recruiter
+contacts, applications and account details are excluded from the projection.
+Closed/expired jobs, inactive companies, draft/non-running campaigns and mismatched
+campaign/company bindings are excluded. Hidden campaign salaries are returned as null.
+
+Retrieval matches stored industry names or meaningful adjacent keyword pairs and returns
+at most six recent matches. It is bounded keyword retrieval, not an exhaustive semantic
+search: a missing result is explicitly reported by backend. Gemini still answers the
+general advice portion, but cannot invent alternative companies or vacancies. Gemini is instructed to
+summarize only supplied records; UI job cards and URLs always come from backend IDs.
+History preserves the supplied job links as a dated conversation, not a guarantee that
+a vacancy remains open later. No database schema change is needed for this feature.
+
+Checks: `ExternalAuthChecks --ai-lookup-only` (isolated data) and
+`--ai-lookup-sql-read` (read-only local SQL translation/execution probe).
+
