@@ -16,51 +16,41 @@ public sealed class EmployerCompanyService(
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private Guid AccountId => Actor.AccountId;
-    public async Task<UseCaseResult> Industries(CancellationToken ct) =>
-        Success(
+    public async Task<UseCaseResult> Industries(CancellationToken ct)
+    {
+        try
+        {
+            return Success(
             await db
                 .IndustryRecords.ReadOnly()
                 .Where(i => i.Status == EntityStatus.Active)
                 .OrderBy(i => i.IndustryName)
                 .Select(i => new { i.Id, Name = i.IndustryName })
                 .ToListAsync(ct)
-        );
-
-    private async Task<RecruiterProfile?> Membership(CancellationToken ct)
-    {
-        try
-        {
-            return await (
-                db
-                    .RecruiterProfileRecords.With(p => p.Company)
-                    .ThenWith(c => c.HeadOfficeProvince)
-                    .With(p => p.Company)
-                    .ThenWith(c => c.LogoFile)
-                    .With(p => p.Company)
-                    .ThenWith(c => c.CoverFile)
-                    .Where(p =>
-                        p.AccountId == AccountId
-                        && p.Status == EntityStatus.Active
-                        && p.Company.Status == EntityStatus.Active
-                    )
-                    .OrderBy(p => p.JoinedAt)
-                    .ThenBy(p => p.Id)
-                    .FirstOrDefaultAsync(ct)
             );
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            global::JobTot.Application.ExceptionDiagnostics.Record(
-                exception,
-                "EmployerCompanyService.Membership"
-            );
-            throw;
+            return UseCaseResult.Cancelled();
         }
     }
+
+    private Task<RecruiterProfile?> Membership(CancellationToken ct) =>
+        db
+        .RecruiterProfileRecords.With(p => p.Company)
+        .ThenWith(c => c.HeadOfficeProvince)
+        .With(p => p.Company)
+        .ThenWith(c => c.LogoFile)
+        .With(p => p.Company)
+        .ThenWith(c => c.CoverFile)
+        .Where(p =>
+            p.AccountId == AccountId
+            && p.Status == EntityStatus.Active
+            && p.Company.Status == EntityStatus.Active
+        )
+        .OrderBy(p => p.JoinedAt)
+        .ThenBy(p => p.Id)
+        .FirstOrDefaultAsync(ct);
 
     private static Task<bool> CanEdit(RecruiterProfile profile, CancellationToken ct)
     {
@@ -76,9 +66,9 @@ public sealed class EmployerCompanyService(
             var profile = await Membership(ct);
             return profile is null ? NotFound() : Success(await ToResponse(profile, ct));
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            throw;
+            return UseCaseResult.Cancelled();
         }
         catch (Exception exception)
         {
@@ -254,9 +244,9 @@ public sealed class EmployerCompanyService(
                 );
             return Success(await ToResponse((await Membership(ct))!, ct));
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            throw;
+            return UseCaseResult.Cancelled();
         }
         catch (Exception exception)
         {
@@ -395,9 +385,9 @@ UploadFile file,
                 );
             return Success(await ToResponse((await Membership(ct))!, ct));
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            throw;
+            return UseCaseResult.Cancelled();
         }
         catch (Exception ex)
         {

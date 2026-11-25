@@ -1,5 +1,15 @@
 # Khởi tạo database Backend
 
+## Chat qua WebSocket
+
+Frontend dùng WebSocket thuần tại `/api/candidate/messages/socket` hoặc `/api/employer/messages/socket`, không còn polling tin nhắn và typing. Gọi `POST .../messages/socket-ticket` với bearer token để lấy ticket một lần, hết hạn sau 30 giây; ticket chỉ dùng để nâng cấp kết nối. Kết nối đóng khi access token hết hạn; frontend kết nối lại, lấy ticket qua cơ chế refresh token hiện có và tải bù lịch sử qua REST.
+
+Các lệnh socket `send`, `read`, `typing` đều đi qua Application, kiểm tra phiên và quyền hội thoại. Server chỉ phát sự kiện đến các kết nối của hai thành viên; tin nhắn được lưu trước khi phát. Gửi lại giữ nguyên `clientMessageId` để không tạo bản trùng. REST vẫn hỗ trợ tải lịch sử, tìm người, tạo hội thoại và tương thích client cũ.
+
+Proxy/IIS phải cho phép WebSocket Upgrade, HTTPS sử dụng `wss://`. Registry kết nối và ticket hiện nằm trong bộ nhớ của một API instance. Nếu chạy nhiều instance cần bổ sung distributed ticket store và pub/sub/backplane; chỉ sticky session không đủ để chuyển tin giữa các instance. Không cần migration database.
+
+Kiểm tra kết nối WebSocket thật: `dotnet run --project tools/ExternalAuthChecks -- --root .. --architecture-only`. Kiểm tra client: từ FE chạy `node --test scripts/chat-socket.test.mjs`.
+
 ## Ranh giới Clean Architecture
 
 - `JobTot.Api`: route, authentication/authorization HTTP, model binding, cookie, header và chuyển kết quả use case thành HTTP response. Controller gọi service của Application, không dùng DbContext, EF Core hoặc SQL.
@@ -57,3 +67,40 @@ Ví dụ:
 - Admin: admin@demo.jobtot.test
 - Nhà tuyển dụng: employer001@demo.jobtot.test
 - Ứng viên: candidate0001@demo.jobtot.test 
+# AI public job retrieval
+
+Only explicit company/job/recruitment requests in the CURRENT question trigger
+`AiJobLookup` and job cards. Industry, AI-impact, skills, CV and opportunity advice
+receive ordinary answers without cards or no-match notes, even after a job-search turn.
+Job matching uses actual position titles and role aliases, never the company's industry
+alone: a marketing job at an IT company is not an IT vacancy. General advice never
+requires matching catalogue records. For explicit searches, Gemini advises first;
+a no-match note is appended afterwards if necessary.
+The assistant stays within careers, work-related study/skills, CVs and interviews;
+off-topic requests should receive a brief explanation of that mission.
+For follow-ups, backend reads up to four prior user questions from the authenticated
+owner's conversation. These are contextual data, not system instructions. Earlier
+images and stale job snapshots are never replayed. References such as "ngành này"
+resolve the earlier subject; new-graduate requests filter internships/junior or
+entry-level jobs. Returned examples are not statistics for the whole labour market.
+The authenticated actor is required; both candidate and employer chat receive only the
+public catalogue, never private employer records. Prompt claims cannot change this scope.
+There is no SQL execution or arbitrary table access granted to Gemini.
+
+The allow-list includes public job title, company name/description/founding year,
+industry, location and published salary. Tax codes, registration documents, recruiter
+contacts, applications and account details are excluded from the projection.
+Closed/expired jobs, inactive companies, draft/non-running campaigns and mismatched
+campaign/company bindings are excluded. Hidden campaign salaries are returned as null.
+
+Retrieval matches stored industry names or meaningful adjacent keyword pairs and returns
+at most six recent matches. It is bounded keyword retrieval, not an exhaustive semantic
+search: a missing result is explicitly reported by backend. Gemini still answers the
+general advice portion, but cannot invent alternative companies or vacancies. Gemini is instructed to
+summarize only supplied records; UI job cards and URLs always come from backend IDs.
+History preserves the supplied job links as a dated conversation, not a guarantee that
+a vacancy remains open later. No database schema change is needed for this feature.
+
+Checks: `ExternalAuthChecks --ai-lookup-only` (isolated data) and
+`--ai-lookup-sql-read` (read-only local SQL translation/execution probe).
+

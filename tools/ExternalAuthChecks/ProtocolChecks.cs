@@ -37,6 +37,61 @@ public static class ProtocolChecks
                 catch (ExternalIdentityException) { check(true, $"{role} {name}: rejects invalid {fault}"); }
             }
         }
+        foreach (var role in new[] { "candidate", "employer" })
+        foreach (var fault in new[] { "timeout", "network", "io", "http401", "http503", "json", "missing-token", "userinfo-timeout", "userinfo-network" })
+        {
+            handler.Fault = fault;
+            var before = handler.TokenCalls;
+            try
+            {
+                await client.Exchange(client.Provider(name, role), "code", "https://jobtot.example/callback", "verifier", "nonce", default);
+                check(false, "backchannel failure must not produce identity");
+            }
+            catch (ExternalIdentityException e)
+            {
+                var expected = fault.Contains("timeout") ? ExternalIdentityFailure.Timeout
+                    : fault is "network" or "io" or "http503" or "userinfo-network" ? ExternalIdentityFailure.Unavailable
+                    : ExternalIdentityFailure.InvalidResponse;
+                check(e.Failure == expected && !e.Message.Contains("sensitive") && handler.TokenCalls == before + 1,
+                    role + " " + fault + ": sanitized typed failure with no authorization-code retry");
+            }
+        }
+        using (var slowHandler = new SlowHandler())
+        using (var slowHttp = new HttpClient(slowHandler) { Timeout = TimeSpan.FromMilliseconds(100) })
+        {
+            var slowClient = new ExternalIdentityClient(config, new Factory(slowHttp));
+            try
+            {
+                await slowClient.Exchange(client.Provider(name, "candidate"), "code", "https://jobtot.example/callback", "verifier", "nonce", default);
+                check(false, "expected HTTP timeout");
+            }
+            catch (ExternalIdentityException e)
+            {
+                check(e.Failure == ExternalIdentityFailure.Timeout && slowHandler.Calls == 1,
+                    "actual HttpClient timeout is handled locally and never retried");
+            }
+        }
+        using (var slowHandler = new SlowHandler())
+        using (var slowHttp = new HttpClient(slowHandler) { Timeout = Timeout.InfiniteTimeSpan })
+        using (var cancelled = new CancellationTokenSource())
+        {
+            var slowClient = new ExternalIdentityClient(config, new Factory(slowHttp));
+            var exchange = slowClient.Exchange(client.Provider(name, "candidate"), "code", "https://jobtot.example/callback", "verifier", "nonce", cancelled.Token);
+            await slowHandler.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            cancelled.Cancel();
+            try { await exchange; check(false, "expected client cancellation"); }
+            catch (OperationCanceledException)
+            {
+                check(slowHandler.Calls == 1, "client disconnect remains cancellation instead of a provider timeout");
+            }
+            var before = slowHandler.Calls;
+            try
+            {
+                await slowClient.Exchange(client.Provider(name, "candidate"), "code", "https://jobtot.example/callback", "verifier", "nonce", cancelled.Token);
+                check(false, "expected pre-cancelled request");
+            }
+            catch (OperationCanceledException) { check(slowHandler.Calls == before, "pre-cancelled exchange never sends HTTP"); }
+        }
         try
         {
             new ExternalIdentityClient(new ConfigurationBuilder().Build(), new Factory(http)).Provider("google", "candidate");
@@ -58,11 +113,24 @@ public static class ProtocolChecks
     {
         public HttpClient CreateClient(string name) => client;
     }
+    private sealed class SlowHandler : HttpMessageHandler
+    {
+        public int Calls;
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            Calls++;
+            Started.TrySetResult();
+            await Task.Delay(Timeout.Infinite, ct);
+            throw new InvalidOperationException("Unreachable");
+        }
+    }
     private sealed class ProtocolHandler : HttpMessageHandler
     {
         private readonly RSA key = RSA.Create(2048);
         private readonly RSA invalid = RSA.Create(2048);
         public string Fault { get; set; } = "";
+        public int TokenCalls { get; private set; }
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             const string issuer = "https://accounts.google.com";
@@ -84,6 +152,15 @@ public static class ProtocolChecks
             }
             else if (request.Method == HttpMethod.Post)
             {
+                TokenCalls++;
+                if (Fault == "timeout") throw new TaskCanceledException("sensitive timeout", new TimeoutException());
+                if (Fault == "network") throw new HttpRequestException("sensitive network detail");
+                if (Fault == "io") throw new IOException("sensitive IO detail");
+                if (Fault is "http401" or "http503")
+                    return new HttpResponseMessage(Fault == "http401" ? HttpStatusCode.Unauthorized : HttpStatusCode.ServiceUnavailable)
+                    { Content = new StringContent("sensitive provider response") };
+                if (Fault == "json") return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("not json") };
+                if (Fault == "missing-token") return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") };
                 var body = await request.Content!.ReadAsStringAsync(ct);
                 if (!body.Contains("client_secret=secret") || !body.Contains("code_verifier=verifier"))
                     throw new InvalidOperationException("Token request missing client authentication or PKCE");
@@ -105,6 +182,8 @@ public static class ProtocolChecks
             }
             else
             {
+                if (Fault == "userinfo-timeout") throw new TaskCanceledException("sensitive userinfo timeout");
+                if (Fault == "userinfo-network") throw new HttpRequestException("sensitive userinfo network");
                 if (request.Headers.Authorization?.ToString() != "Bearer test-access")
                     throw new InvalidOperationException("userinfo requires provider token");
                 result = new

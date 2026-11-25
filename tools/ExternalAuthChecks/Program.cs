@@ -13,7 +13,29 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 
+if (args.Contains("--ai-lookup-only")) { await AiLookupChecks.Run(); return; }
+if (args.Contains("--ai-lookup-sql-read")) { await AiLookupChecks.SqlRead(); return; }
 const string origin = "http://127.0.0.1:5199";
+if (args.Contains("--ai-history-sql-read")) { await AiHistoryChecks.SqlRead(); return; }
+if (args.Contains("--ai-history-only")) { await AiHistoryChecks.Run(); return; }
+if (args.Contains("--database-reads")) { await DatabaseReadChecks.Run(); return; }
+if (args.Contains("--cancellation-only"))
+{
+    var count = 0;
+    await CancellationChecks.Run((ok, name) => { if (!ok) throw new Exception(name); count++; Console.WriteLine("PASS " + name); });
+    Console.WriteLine($"PASS {count} cancellation checks; no external database or network");
+    return;
+}
+if (args.Contains("--gemini-live-image")) { await GeminiChecks.Live(args[Array.IndexOf(args, "--gemini-live-image") + 1]); return; }
+if (args.Contains("--gemini-live")) { await GeminiChecks.Live(); return; }
+if (args.Contains("--gemini-only")) { await GeminiChecks.Run(); return; }
+if (args.Contains("--protocol-only"))
+{
+    var count = 0;
+    await ProtocolChecks.Run((ok, name) => { if (!ok) throw new Exception(name); count++; Console.WriteLine("PASS " + name); });
+    Console.WriteLine($"PASS {count} protocol checks; fake HTTP only, no database or provider requests");
+    return;
+}
 var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../.."));
 // Run from repository root, or pass --root <workspace> when using a custom output directory.
 var rootArg = Array.IndexOf(args, "--root");
@@ -28,8 +50,10 @@ builder.Configuration["ExternalAuth:WebOrigin"] = origin;
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<JobTot.Application.Execution.ICurrentActor, CurrentActor>();
 builder.Services.AddApplication();
+builder.Services.AddSingleton<ChatSockets>();
+builder.Services.AddSingleton<JobTot.Application.Features.IChatEvents>(sp => sp.GetRequiredService<ChatSockets>());
 builder.Services.AddInfrastructureAdapters();
-builder.Services.AddControllers().AddApplicationPart(typeof(ExternalAuthController).Assembly);
+builder.Services.AddControllers(options => options.Filters.Add<RequestCancellationFilter>()).AddApplicationPart(typeof(ExternalAuthController).Assembly);
 builder.Services.AddDbContext<RecruitmentDbContext>(options => options.UseInMemoryDatabase("external-auth-checks"));
 builder.Services.AddSingleton<IAccountPasswordHasher, AccountPasswordHasher>();
 builder.Services.AddScoped<ICandidateAuthRepository, CandidateAuthRepository>();
@@ -51,6 +75,7 @@ builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(output, "keys")));
 await using var app = builder.Build();
+app.UseWebSockets();
 app.UseExceptionHandler();
 // Keep the existing auth rate limiter out of this fixture host: the scenario suite
 // intentionally exceeds ten requests/minute. Production still enables its named policy.
@@ -201,6 +226,17 @@ Check(canceled.GetProperty("error").GetString()!.Contains("hủy"), "cancellatio
 var failed = await Start("candidate", "google", "login", "provider-error");
 var failure = await Json(await client.GetAsync($"/api/candidate/auth/external/flows/{failed.Id}"));
 Check(failure.GetProperty("stage").GetString() == "failed", "provider validation failure creates no session");
+foreach (var role in new[] { "candidate", "employer" })
+foreach (var fault in new[] { "provider-timeout", "provider-unavailable" })
+{
+    var flow = await Start(role, "google", "login", fault);
+    var failedFlow = await Json(await client.GetAsync($"/api/{role}/auth/external/flows/{flow.Id}"));
+    var message = failedFlow.GetProperty("error").GetString()!;
+    Check(failedFlow.GetProperty("stage").GetString() == "failed" && !failedFlow.GetProperty("linked").GetBoolean()
+        && message.Contains(fault == "provider-timeout" ? "quá lâu" : "Không thể kết nối") && !message.Contains("sensitive"),
+        role + " " + fault + ": callback returns failed flow with a safe actionable error");
+    await Json(await client.PostAsJsonAsync($"/api/{role}/auth/external/flows/{flow.Id}/session", new { }), 400);
+}
 var switched = await Start("candidate", "google", "login", "google-backend");
 await Json(await client.GetAsync($"/api/employer/auth/external/flows/{switched.Id}"), 403);
 using (var attacker = new HttpClient { BaseAddress = new Uri(origin) })
@@ -424,6 +460,9 @@ public sealed class FakeIdentityClient : IExternalIdentityClient
     {
         if (code == "provider-error")
             throw new ExternalIdentityException("provider failure", new Exception("fixture"));
+        if (code is "provider-timeout" or "provider-unavailable")
+            throw new ExternalIdentityException("sensitive fixture detail", new Exception("sensitive fixture detail"),
+                code == "provider-timeout" ? ExternalIdentityFailure.Timeout : ExternalIdentityFailure.Unavailable);
         var email = code == "missing" ? null : code.StartsWith("duplicate", StringComparison.Ordinal) ? "duplicate@checks.example" : code.Replace("-alias", "").Replace('-', '.') + "@checks.example";
         return Task.FromResult(new ExternalIdentity(code, email, code == "missing" ? null : "Người dùng thử nghiệm", true));
     }

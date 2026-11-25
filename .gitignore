@@ -10,3 +10,4 @@
 
 # Generated decoration files and ownership metadata (configure persistent storage in production).
 **/App_Data/cv-decorations/
+**/App_Data/ai-chat/

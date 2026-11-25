@@ -26,6 +26,7 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger, IDa
         }
         var (status, title) = exception switch
         {
+            DataReadTimeoutException => (503, "Cơ sở dữ liệu phản hồi quá lâu. Vui lòng thử lại sau."),
             EmailSecurityException email => (email.Status, "Xác thực email"),
             EmployerCompanyConflictException => (409, "Doanh nghiệp đã tồn tại"),
             DuplicateAccountException => (409, "Tài khoản đã tồn tại"),
